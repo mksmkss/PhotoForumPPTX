@@ -9,7 +9,7 @@ done
 APP=dist/PhotoForumPPTX.app
 rm -rf dist && mkdir -p $APP/Contents/MacOS $APP/Contents/Resources
 lipo -create .build/PhotoForumPPTX-arm64 .build/PhotoForumPPTX-x86_64 -output $APP/Contents/MacOS/PhotoForumPPTX
-cp Resources/template.pptx $APP/Contents/Resources/
+cp Resources/template.pptx Resources/AppIcon.icns $APP/Contents/Resources/
 cat > $APP/Contents/Info.plist <<P
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
@@ -17,6 +17,7 @@ cat > $APP/Contents/Info.plist <<P
 <key>CFBundleName</key><string>写真フォーラムPPTX</string>
 <key>CFBundleExecutable</key><string>PhotoForumPPTX</string>
 <key>CFBundleIdentifier</key><string>local.photoforumpptx</string>
+<key>CFBundleIconFile</key><string>AppIcon</string>
 <key>CFBundlePackageType</key><string>APPL</string>
 <key>CFBundleVersion</key><string>1</string>
 <key>CFBundleShortVersionString</key><string>1.0</string>

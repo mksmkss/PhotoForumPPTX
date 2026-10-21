@@ -4,11 +4,18 @@
 「写真表現Ⅰ 写真投稿フォーラム」テンプレートの書式で pptx を作る Mac アプリ。複数枚選ぶと複数ページになります。
 
 ## インストール(配布を受ける人)
-1. `PhotoForumPPTX.zip` と `install.sh` を同じフォルダに置く
-2. ターミナルで `sh install.sh`
-   (`/Applications` に入り、未公証アプリ用の隔離属性を外します)
+`PhotoForumPPTX.zip` を `~/Downloads` に置いて、ターミナルに次の1行を貼り付けます。
+展開 → `/Applications` に配置 → 隔離属性の解除 → 起動 まで一度に終わります。更新版も同じ1行で上書きできます。
 
-もしくは zip を展開した `.app` を右クリック → 開く。
+```sh
+unzip -oq ~/Downloads/PhotoForumPPTX.zip -d /Applications && xattr -dr com.apple.quarantine /Applications/PhotoForumPPTX.app && open /Applications/PhotoForumPPTX.app
+```
+
+- アプリが起動中なら、先に終了してから実行してください。
+- zipの名前が `PhotoForumPPTX (1).zip` などになっている場合は、パスをその名前に読み替えてください。
+- `/Applications` に書き込めない場合は、`mkdir -p ~/Applications` を先に実行し、上の1行の `/Applications` を `~/Applications` に変えてください。
+- 公証していないため、Finderで展開した場合は初回に「開発元を検証できません」と出ます。その場合も上の1行で解決します。
+  (「右クリック→開く」だけでは通らないことがあります。macOS Sequoia以降は、システム設定 → プライバシーとセキュリティ → 「このまま開く」が必要です)
 
 ## 使い方
 - 「写真を選択…」またはドラッグ&ドロップ。写真ごとにEXIFの値を手修正できます。

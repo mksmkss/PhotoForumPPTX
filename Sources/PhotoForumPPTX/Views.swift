@@ -208,24 +208,19 @@ struct SuggestField: View {
             } label: { Image(systemName: "chevron.down.circle") }
                 .menuStyle(.borderlessButton).menuIndicator(.hidden).fixedSize()
         }
-        // 候補はレイアウトに影響させず、欄の下に重ねて表示する
-        .overlay(alignment: .bottomLeading) {
-            if open && !matches.isEmpty {
-                VStack(alignment: .leading, spacing: 0) {
-                    ForEach(matches.prefix(6), id: \.self) { c in
-                        Button { text = c; open = false } label: {
-                            Text(c).font(.caption).frame(maxWidth: .infinity, alignment: .leading)
-                                .padding(.horizontal, 6).padding(.vertical, 3).contentShape(Rectangle())
-                        }.buttonStyle(.plain)
-                    }
+        // 候補はポップオーバーで欄の下に出す(レイアウトに影響せず、Listの行にも切られない)
+        .popover(isPresented: Binding(get: { open && !matches.isEmpty }, set: { open = $0 }),
+                 attachmentAnchor: .rect(.bounds), arrowEdge: .bottom) {
+            VStack(alignment: .leading, spacing: 0) {
+                ForEach(matches.prefix(6), id: \.self) { c in
+                    Button { text = c; open = false } label: {
+                        Text(c).font(.caption).frame(maxWidth: .infinity, alignment: .leading)
+                            .padding(.horizontal, 8).padding(.vertical, 4).contentShape(Rectangle())
+                    }.buttonStyle(.plain)
                 }
-                .background(RoundedRectangle(cornerRadius: 5).fill(Color(nsColor: .windowBackgroundColor)))
-                .overlay(RoundedRectangle(cornerRadius: 5).stroke(Color.secondary.opacity(0.5)))
-                .shadow(radius: 4, y: 2)
-                .alignmentGuide(.bottom) { $0[.top] - 2 }
             }
+            .frame(minWidth: 220).padding(4)
         }
-        .zIndex(open ? 10 : 0)
         .onChange(of: focused) { f in
             if f { open = true } else {
                 // クリックで候補を選べるよう、フォーカスが外れてから少し待って閉じる

@@ -103,7 +103,7 @@ struct PhotoRow: View {
                     TextField("作品タイトル", text: $photo.title)
                 }
                 Grid(alignment: .leading, horizontalSpacing: 6, verticalSpacing: 3) {
-                    GridRow { field("カメラ", $photo.camera); field("レンズ", $photo.lens) }
+                    GridRow { suggestField("カメラ", $photo.camera, cameraCandidates); suggestField("レンズ", $photo.lens, lensCandidates) }
                     GridRow {
                         HStack { field("焦点距離(mm)", $photo.focal); field("SS", $photo.shutter) }
                         HStack { field("F", $photo.aperture); field("ISO", $photo.iso) }
@@ -112,6 +112,24 @@ struct PhotoRow: View {
             }
             Button(role: .destructive, action: onRemove) { Image(systemName: "xmark.circle") }.buttonStyle(.borderless)
         }.padding(.vertical, 4)
+    }
+
+    /// 対応表の表示名(カメラは「表示名 / 型番」)
+    var cameraCandidates: [String] {
+        model.cameras.entries.filter { !$0.key.isEmpty }.map { e in
+            e.value.isEmpty || e.value == e.key ? e.key : "\(e.value) / \(e.key)"
+        }
+    }
+
+    /// 対応表の表示名 + 今読み込んでいる写真のEXIFレンズ名(重複除く)
+    var lensCandidates: [String] {
+        var out: [String] = []
+        for c in model.lenses.entries.map(\.value) + model.photos.map(\.lens) where !c.isEmpty && !out.contains(c) { out.append(c) }
+        return out
+    }
+
+    func suggestField(_ label: String, _ b: Binding<String>, _ candidates: [String]) -> some View {
+        SuggestField(label: label, text: b, candidates: candidates)
     }
 
     func field(_ label: String, _ b: Binding<String>) -> some View {
@@ -162,5 +180,58 @@ struct TableEditor: View {
                 Text("変更は次に読み込む写真から反映されます").font(.caption).foregroundStyle(.secondary)
             }
         }.padding()
+    }
+}
+
+/// 入力欄 + 横の候補メニュー + 入力中に下へ出る候補リスト(入力文字で絞り込み)
+struct SuggestField: View {
+    let label: String
+    @Binding var text: String
+    let candidates: [String]
+    @FocusState private var focused: Bool
+    @State private var open = false
+
+    private var matches: [String] {
+        let q = text.trimmingCharacters(in: .whitespaces).lowercased()
+        guard !q.isEmpty else { return [] }
+        return candidates.filter { $0.lowercased().contains(q) && $0 != text }
+    }
+
+    var body: some View {
+        HStack(spacing: 2) {
+            TextField(label, text: $text)
+                .textFieldStyle(.roundedBorder).font(.caption)
+                .focused($focused)
+            Menu {
+                if candidates.isEmpty { Text("候補なし") }
+                ForEach(candidates, id: \.self) { c in Button(c) { text = c } }
+            } label: { Image(systemName: "chevron.down.circle") }
+                .menuStyle(.borderlessButton).menuIndicator(.hidden).fixedSize()
+        }
+        // 候補はレイアウトに影響させず、欄の下に重ねて表示する
+        .overlay(alignment: .bottomLeading) {
+            if open && !matches.isEmpty {
+                VStack(alignment: .leading, spacing: 0) {
+                    ForEach(matches.prefix(6), id: \.self) { c in
+                        Button { text = c; open = false } label: {
+                            Text(c).font(.caption).frame(maxWidth: .infinity, alignment: .leading)
+                                .padding(.horizontal, 6).padding(.vertical, 3).contentShape(Rectangle())
+                        }.buttonStyle(.plain)
+                    }
+                }
+                .background(RoundedRectangle(cornerRadius: 5).fill(Color(nsColor: .windowBackgroundColor)))
+                .overlay(RoundedRectangle(cornerRadius: 5).stroke(Color.secondary.opacity(0.5)))
+                .shadow(radius: 4, y: 2)
+                .alignmentGuide(.bottom) { $0[.top] - 2 }
+            }
+        }
+        .zIndex(open ? 10 : 0)
+        .onChange(of: focused) { f in
+            if f { open = true } else {
+                // クリックで候補を選べるよう、フォーカスが外れてから少し待って閉じる
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) { if !focused { open = false } }
+            }
+        }
+        .onChange(of: text) { _ in if focused { open = true } }
     }
 }

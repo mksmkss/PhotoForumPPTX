@@ -26,6 +26,7 @@ cat > $APP/Contents/Info.plist <<P
 <key>NSHighResolutionCapable</key><true/>
 </dict></plist>
 P
+xattr -cr $APP                            # 拡張属性を除去(zipに ._ ファイルが混ざると署名が壊れる)
 codesign --force --deep --sign - $APP     # ad-hoc署名(Apple Silicon で起動に必須。公証ではない)
-ditto -c -k --keepParent $APP dist/PhotoForumPPTX.zip
+ditto -c -k --keepParent --norsrc --noextattr --noacl $APP dist/PhotoForumPPTX.zip
 echo "OK: dist/PhotoForumPPTX.zip"

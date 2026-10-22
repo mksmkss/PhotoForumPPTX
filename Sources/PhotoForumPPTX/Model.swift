@@ -134,6 +134,14 @@ final class AppModel: ObservableObject {
     @Published var update: ReleaseCheck.Found?
     @Published var fonts: SlideFonts { didSet { saveFonts() } }
     @Published var updating = false
+    @Published var pendingNotes: [ReleaseNote] = []
+
+    /// 既存ユーザーか(対応表より先に評価する必要があるので、cameras より前に宣言)。
+    /// v1.1以降は初回起動で対応表の版を記録するので、それが残っていれば既存ユーザー
+    private let wasExistingUser: Bool = {
+        let d = UserDefaults.standard
+        return d.object(forKey: "defaultsVersion.cameras.json") != nil || d.object(forKey: "fields") != nil
+    }()
 
     let cameras = MapTable(fileName: "cameras.json", defaults: DefaultTables.cameras, version: DefaultTables.version)
     let lenses = MapTable(fileName: "lenses.json", defaults: DefaultTables.lenses, version: DefaultTables.version)
@@ -158,6 +166,18 @@ final class AppModel: ObservableObject {
         } else {
             fields = defaultFields
         }
+
+        // 更新後の初回起動なら「新機能」を出す。新規インストールは出さない。
+        // この機能より前の版(v1.3)から更新した人は lastSeen が無いので、設定の有無で既存ユーザーを判定する
+        let cur = Links.version
+        let last = d.string(forKey: "lastSeenVersion") ?? (wasExistingUser ? "1.3" : cur)
+        pendingNotes = ReleaseNotes.between(last, cur)
+        d.set(pendingNotes.isEmpty ? cur : last, forKey: "lastSeenVersion")
+    }
+
+    func dismissNotes() {
+        pendingNotes = []
+        UserDefaults.standard.set(Links.version, forKey: "lastSeenVersion")
     }
 
     private func saveFonts() {

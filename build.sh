@@ -1,7 +1,7 @@
 #!/bin/sh
 # PhotoForumPPTX.app を作って配布用zipにまとめる (Xcode不要、Command Line Toolsだけで可)
 set -e
-VERSION=${VERSION:-1.1}   # リリース時: VERSION=1.2 ./build.sh
+VERSION=${VERSION:-1.5}   # リリース時: VERSION=1.2 ./build.sh
 cd "$(dirname "$0")"
 mkdir -p .build
 for a in arm64 x86_64; do
@@ -11,6 +11,7 @@ APP=dist/PhotoForumPPTX.app
 rm -rf dist && mkdir -p $APP/Contents/MacOS $APP/Contents/Resources
 lipo -create .build/PhotoForumPPTX-arm64 .build/PhotoForumPPTX-x86_64 -output $APP/Contents/MacOS/PhotoForumPPTX
 cp Resources/template.pptx Resources/AppIcon.icns $APP/Contents/Resources/
+mkdir -p $APP/Contents/Resources/whatsnew && cp Resources/whatsnew/*.png $APP/Contents/Resources/whatsnew/ 2>/dev/null || true
 cat > $APP/Contents/Info.plist <<P
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">

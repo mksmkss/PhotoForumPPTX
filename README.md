@@ -26,10 +26,16 @@ v1.2 以降は、新しい版が出ると起動時にバナーが出ます。「
 メニュー「写真フォーラムPPTX → アップデートを確認…」で手動確認もできます(オフライン時は「zipファイルからアップデート…」、またはzipをウィンドウにドロップ)。
 v1.1 以前を使っている人は、一度だけ上の1行コマンドで最新版にしてください。
 
+## 新機能の表示
+アップデート後の初回起動で、変更点(スクリーンショット付き)が「新機能」ウィンドウに出ます。メニュー Help → 新機能(更新履歴)でいつでも見返せます。
+
 ## リリース手順(開発者向け)
 ```sh
-VERSION=1.3 ./build.sh
-gh release create v1.3 dist/PhotoForumPPTX.zip --title "v1.3" --notes "変更点"
+# 1. Sources/PhotoForumPPTX/WhatsNew.swift の ReleaseNotes.all の先頭に変更点を1件足す
+#    (スクリーンショットは Resources/whatsnew/<名前>.png に置き、image: "<名前>" で参照)
+# 2. ビルドしてリリース
+VERSION=1.6 ./build.sh
+gh release create v1.6 dist/PhotoForumPPTX.zip --title "v1.6" --notes "変更点"
 ```
 アプリは GitHub Releases の最新タグ(`vX.Y`)と自身のバージョンを比べて、新しければ `PhotoForumPPTX.zip` を取得します。
 

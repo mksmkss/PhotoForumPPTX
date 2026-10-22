@@ -50,6 +50,7 @@ final class MapTable: ObservableObject {
     /// 大文字小文字・前後空白を無視して引く。見つからなければnil
     func lookup(_ key: String) -> String? {
         let k = key.trimmingCharacters(in: .whitespaces).lowercased()
+        guard !k.isEmpty else { return nil }
         return entries.first { $0.key.trimmingCharacters(in: .whitespaces).lowercased() == k }?.value
     }
 }
@@ -69,8 +70,13 @@ enum DefaultTables {
         ("ZV-E10", "ZV-E10"), ("ZV-E10M2", "ZV-E10 II"), ("ZV-E1", "ZV-E1"), ("ZV-1", "ZV-1"), ("ZV-1M2", "ZV-1 II"),
         ("ILME-FX3", "FX3"), ("ILME-FX30", "FX30"),
         ("DSC-RX1R", "RX1R"), ("DSC-RX1RM2", "RX1R II"), ("DSC-RX1RM3", "RX1R III"),
-        ("DSC-RX100M5A", "RX100 VA"), ("DSC-RX100M6", "RX100 VI"), ("DSC-RX100M7", "RX100 VII"),
-        ("DSC-RX10M4", "RX10 IV"), ("DSC-HX99", "HX99"),
+        ("DSC-RX100", "RX100"), ("DSC-RX100M2", "RX100 II"), ("DSC-RX100M3", "RX100 III"),
+        ("DSC-RX100M4", "RX100 IV"), ("DSC-RX100M5", "RX100 V"), ("DSC-RX100M5A", "RX100 VA"),
+        ("DSC-RX100M6", "RX100 VI"), ("DSC-RX100M7", "RX100 VII"),
+        ("DSC-RX10", "RX10"), ("DSC-RX10M2", "RX10 II"), ("DSC-RX10M3", "RX10 III"), ("DSC-RX10M4", "RX10 IV"),
+        ("DSC-RX1", "RX1"), ("DSC-RX0", "RX0"), ("DSC-RX0M2", "RX0 II"),
+        ("ILME-FX6", "FX6"), ("ILME-FX2", "FX2"), ("ILCE-6700", "α6700"), ("ILCE-7M3K", "α7 III"),
+        ("ILCE-QX1", "QX1"), ("DSC-HX99", "HX99"),
     ].map { MapEntry(key: $0.0, value: $0.1) }
 
     /// レンズはEXIFのLensModelをそのまま使うのが基本。名前を直したいものだけここに足す
@@ -79,5 +85,5 @@ enum DefaultTables {
     ].map { MapEntry(key: $0.0, value: $0.1) }
 
     /// 既定値を増やしたら上げる(既存ユーザーの表にも新しい既定値が入る)
-    static let version = 2
+    static let version = 3
 }

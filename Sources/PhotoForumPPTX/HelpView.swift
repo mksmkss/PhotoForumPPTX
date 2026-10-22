@@ -30,6 +30,7 @@ struct HelpCommands: Commands {
     var body: some Commands {
         CommandGroup(replacing: .help) {
             Button("使い方") { openWindow(id: "help") }
+            Button("新機能(更新履歴)") { openWindow(id: "whatsnew") }
             Divider()
             Button("不具合・要望を報告 (GitHub Issue)…") { NSWorkspace.shared.open(Links.newIssue) }
             Button("GitHub リポジトリを開く") { NSWorkspace.shared.open(Links.repo) }

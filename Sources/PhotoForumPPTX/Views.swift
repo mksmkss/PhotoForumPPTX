@@ -16,6 +16,7 @@ struct PhotoForumApp: App {
             HelpCommands()
         }
         Window("使い方", id: "help") { HelpView() }
+        Window("新機能", id: "whatsnew") { WhatsNewWindow() }
         Settings {
             SettingsView().environmentObject(model)
         }
@@ -36,6 +37,9 @@ struct ContentView: View {
             }
         }
         .task { await model.checkForUpdate() }
+        .sheet(isPresented: Binding(get: { !model.pendingNotes.isEmpty }, set: { if !$0 { model.dismissNotes() } })) {
+            WhatsNewView(notes: model.pendingNotes) { model.dismissNotes() }
+        }
         .overlay(alignment: .bottom) {
             if !model.status.isEmpty {
                 Text(model.status).padding(8).background(.regularMaterial, in: Capsule()).padding(.bottom, 8)
@@ -295,4 +299,10 @@ struct FontSettings: View {
         .padding()
         .frame(maxHeight: .infinity, alignment: .top)
     }
+}
+
+/// Help → 新機能 から開く(全履歴)
+struct WhatsNewWindow: View {
+    @Environment(\.dismiss) private var dismiss
+    var body: some View { WhatsNewView(notes: ReleaseNotes.all) { dismiss() } }
 }

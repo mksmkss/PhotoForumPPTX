@@ -3,18 +3,22 @@
 写真を選ぶと、EXIFからカメラ名・レンズ名・焦点距離・SS・F値・ISOを読み取り、
 「写真表現Ⅰ 写真投稿フォーラム」テンプレートの書式で pptx を作る Mac アプリ。複数枚選ぶと複数ページになります。
 
-## インストール(配布を受ける人)
-`PhotoForumPPTX.zip` を `~/Downloads` に置いて、ターミナルに次の1行を貼り付けます。
-展開 → `/Applications` に配置 → 隔離属性の解除 → 起動 まで一度に終わります。更新版も同じ1行で上書きできます。
+## インストール(配布を受ける人向け)
+ターミナルに次の**1行を貼り付けて Enter**するだけです。最新版のダウンロード → `/Applications` に配置 → 起動 まで自動で行います(環境構築は不要)。
 
 ```sh
-unzip -oq ~/Downloads/PhotoForumPPTX.zip -d /Applications && xattr -dr com.apple.quarantine /Applications/PhotoForumPPTX.app && open /Applications/PhotoForumPPTX.app
+curl -fL https://github.com/mksmkss/PhotoForumPPTX/releases/latest/download/PhotoForumPPTX.zip -o /tmp/PhotoForumPPTX.zip && unzip -oq /tmp/PhotoForumPPTX.zip -d /Applications && xattr -dr com.apple.quarantine /Applications/PhotoForumPPTX.app && open /Applications/PhotoForumPPTX.app
 ```
 
+- 動作環境: macOS 13 以降(Apple Silicon / Intel 両対応)。
 - アプリが起動中なら、先に終了してから実行してください。
-- zipの名前が `PhotoForumPPTX (1).zip` などになっている場合は、パスをその名前に読み替えてください。
+- 入れた後は、起動時に新しい版を確認し、あればバナーの「今すぐ更新」ボタンだけで更新できます。
 - `/Applications` に書き込めない場合は、`mkdir -p ~/Applications` を先に実行し、上の1行の `/Applications` を `~/Applications` に変えてください。
-- 公証していないため、Finderで展開した場合は初回に「開発元を検証できません」と出ます。その場合も上の1行で解決します。
+- ネットワークを使わずzipを直接受け取った場合は、zipを `~/Downloads` に置いて次の1行を実行します。
+  ```sh
+  unzip -oq ~/Downloads/PhotoForumPPTX.zip -d /Applications && xattr -dr com.apple.quarantine /Applications/PhotoForumPPTX.app && open /Applications/PhotoForumPPTX.app
+  ```
+- 公証していないため、Finderで展開して開くと初回に「開発元を検証できません」と出ます。その場合も上の1行で解決します。
   (「右クリック→開く」だけでは通らないことがあります。macOS Sequoia以降は、システム設定 → プライバシーとセキュリティ → 「このまま開く」が必要です)
 
 ## アップデート(すでに入れている人)

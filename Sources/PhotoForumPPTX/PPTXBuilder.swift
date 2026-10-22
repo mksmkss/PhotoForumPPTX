@@ -92,8 +92,8 @@ enum PPTXBuilder {
         func height(_ k: FieldKind, _ text: String) -> Int {
             Int(Double(estimateLines(text, size: k.fontSize)) * k.fontSize * 1.2 * 12700) + 91440
         }
-        func emit(_ k: FieldKind, _ text: String, y: Int) {
-            shapes += textShape(id: id, y: y, h: height(k, text), text: text, size: k.fontSize); id += 1
+        func emit(_ k: FieldKind, _ text: String, y: Int, left: Bool = false) {
+            shapes += textShape(id: id, y: y, h: height(k, text), text: text, size: k.fontSize, left: left, indent: k == .note); id += 1
         }
         let items: [(FieldKind, String)] = fields.filter(\.enabled).compactMap { f in
             lineText(f.kind, photo: photo, studentID: studentID, name: name).flatMap { $0.isEmpty ? nil : (f.kind, $0) }
@@ -106,6 +106,11 @@ enum PPTXBuilder {
             emit(k, t, y: cursor); cursor += step(k, t)
         }
 
+        // 焦点距離: 右カラム中央に大きく(完成図の位置)
+        if let (k, t) = items.first(where: { $0.0.group == 3 }) {
+            emit(k, t, y: 2744000 - height(k, t) / 2)
+        }
+
         let upper = items.filter { $0.0.group == 1 }, lower = items.filter { $0.0.group == 2 }
         if !upper.isEmpty || !lower.isEmpty {
             let lineY = 4412530
@@ -116,8 +121,8 @@ enum PPTXBuilder {
                 emit(k, t, y: y); edge = y + inset
             }
             var down = lineY + 30000 - inset
-            for (k, t) in lower {
-                emit(k, t, y: down); down += step(k, t)
+            for (k, t) in lower {                        // 線の下は左寄せ
+                emit(k, t, y: down, left: true); down += step(k, t)
             }
         }
 
@@ -137,10 +142,11 @@ enum PPTXBuilder {
             return t.hasPrefix("「") ? t : "「\(t)」"
         case .camera: return v(photo.camera)
         case .lens: return v(photo.lens)
-        case .focal: return v(photo.focal).map { "Focal Length: \($0) mm" }
+        case .focal: return v(photo.focal).map { "\($0)mm" }
         case .shutter: return v(photo.shutter).map { "Shutter Speed: \($0) sec" }
         case .aperture: return v(photo.aperture).map { "Aperture: f/\($0)" }
         case .iso: return v(photo.iso).map { "ISO: \($0)" }
+        case .note: return v(photo.note)
         }
     }
 
@@ -159,10 +165,13 @@ enum PPTXBuilder {
         s.replacingOccurrences(of: "&", with: "&amp;").replacingOccurrences(of: "<", with: "&lt;").replacingOccurrences(of: ">", with: "&gt;")
     }
 
-    static func textShape(id: Int, y: Int, h: Int, text: String, size: Double) -> String {
+    static func textShape(id: Int, y: Int, h: Int, text: String, size: Double, left: Bool = false, indent: Bool = false) -> String {
         let sz = Int(size * 100)
+        // 左寄せはテンプレートの露出情報ボックスと同じ位置・幅(赤線の左端に文字頭を揃える)
+        let x = left ? 7817724 : colX, w = left ? 1326277 : colW
+        let ppr = left ? "<a:pPr algn=\"l\"\(indent ? " marL=\"54000\"" : "")/>" : "<a:pPr algn=\"ctr\"/>"
         return """
-        <p:sp><p:nvSpPr><p:cNvPr id="\(id)" name="テキスト \(id)"/><p:cNvSpPr txBox="1"/><p:nvPr/></p:nvSpPr><p:spPr><a:xfrm><a:off x="\(colX)" y="\(y)"/><a:ext cx="\(colW)" cy="\(h)"/></a:xfrm><a:prstGeom prst="rect"><a:avLst/></a:prstGeom><a:noFill/></p:spPr><p:txBody><a:bodyPr wrap="square" rtlCol="0"><a:spAutoFit/></a:bodyPr><a:lstStyle/><a:p><a:pPr algn="ctr"/><a:r><a:rPr lang="ja-JP" altLang="en-US" sz="\(sz)" dirty="0"><a:solidFill><a:prstClr val="white"/></a:solidFill><a:latin typeface="Calibri"/><a:ea typeface="ＭＳ Ｐゴシック" panose="020B0600070205080204" pitchFamily="34" charset="-128"/></a:rPr><a:t>\(esc(text))</a:t></a:r></a:p></p:txBody></p:sp>
+        <p:sp><p:nvSpPr><p:cNvPr id="\(id)" name="テキスト \(id)"/><p:cNvSpPr txBox="1"/><p:nvPr/></p:nvSpPr><p:spPr><a:xfrm><a:off x="\(x)" y="\(y)"/><a:ext cx="\(w)" cy="\(h)"/></a:xfrm><a:prstGeom prst="rect"><a:avLst/></a:prstGeom><a:noFill/></p:spPr><p:txBody><a:bodyPr wrap="square" rtlCol="0"><a:spAutoFit/></a:bodyPr><a:lstStyle/><a:p>\(ppr)<a:r><a:rPr lang="ja-JP" altLang="en-US" sz="\(sz)" dirty="0"><a:solidFill><a:prstClr val="white"/></a:solidFill><a:latin typeface="Calibri"/><a:ea typeface="ＭＳ Ｐゴシック" panose="020B0600070205080204" pitchFamily="34" charset="-128"/></a:rPr><a:t>\(esc(text))</a:t></a:r></a:p></p:txBody></p:sp>
         """
     }
 

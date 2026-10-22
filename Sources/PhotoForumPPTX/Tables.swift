@@ -12,7 +12,7 @@ final class MapTable: ObservableObject {
     private let fileName: String
     private let defaults: [MapEntry]
 
-    init(fileName: String, defaults: [MapEntry]) {
+    init(fileName: String, defaults: [MapEntry], version: Int) {
         self.fileName = fileName
         self.defaults = defaults
         if let data = try? Data(contentsOf: MapTable.dir.appendingPathComponent(fileName)),
@@ -20,6 +20,15 @@ final class MapTable: ObservableObject {
             entries = e
         } else {
             entries = defaults
+        }
+        // アプリ更新で既定値が増えたとき、未登録のキーだけ既存の表に足す(消した項目は version が同じ間は復活しない)
+        let vKey = "defaultsVersion.\(fileName)"
+        if UserDefaults.standard.integer(forKey: vKey) < version {
+            for d in defaults where !entries.contains(where: { $0.key.lowercased() == d.key.lowercased() }) {
+                entries.append(d)
+            }
+            UserDefaults.standard.set(version, forKey: vKey)
+            save()
         }
     }
 
@@ -65,5 +74,10 @@ enum DefaultTables {
     ].map { MapEntry(key: $0.0, value: $0.1) }
 
     /// レンズはEXIFのLensModelをそのまま使うのが基本。名前を直したいものだけここに足す
-    static let lenses: [MapEntry] = []
+    static let lenses: [MapEntry] = [
+        ("35mm F2.0", "Sonnar T* 35mm f/2.0"),     // RX1R III
+    ].map { MapEntry(key: $0.0, value: $0.1) }
+
+    /// 既定値を増やしたら上げる(既存ユーザーの表にも新しい既定値が入る)
+    static let version = 2
 }

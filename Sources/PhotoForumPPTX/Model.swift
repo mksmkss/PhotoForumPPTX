@@ -3,7 +3,7 @@ import ImageIO
 import UniformTypeIdentifiers
 
 enum FieldKind: String, CaseIterable, Codable, Identifiable {
-    case studentID, name, title, camera, lens, focal, shutter, aperture, iso
+    case studentID, name, title, camera, lens, focal, shutter, aperture, iso, note
     var id: String { rawValue }
 
     var label: String {
@@ -17,6 +17,7 @@ enum FieldKind: String, CaseIterable, Codable, Identifiable {
         case .shutter: return "シャッタースピード"
         case .aperture: return "F値"
         case .iso: return "ISO"
+        case .note: return "備考(Step Cropなど)"
         }
     }
 
@@ -26,7 +27,8 @@ enum FieldKind: String, CaseIterable, Codable, Identifiable {
         case .studentID, .name: return 10.5
         case .title: return 11
         case .camera, .lens: return 8
-        case .focal, .shutter, .aperture, .iso: return 7.5
+        case .focal: return 20
+        case .shutter, .aperture, .iso, .note: return 7.5
         }
     }
 
@@ -35,7 +37,8 @@ enum FieldKind: String, CaseIterable, Codable, Identifiable {
         switch self {
         case .studentID, .name, .title: return 0
         case .camera, .lens: return 1
-        case .focal, .shutter, .aperture, .iso: return 2
+        case .focal: return 3       // 右カラム中央に大きく
+        case .shutter, .aperture, .iso, .note: return 2   // 赤線の下(左寄せ)
         }
     }
 }
@@ -60,6 +63,7 @@ final class Photo: ObservableObject, Identifiable {
     @Published var shutter = ""
     @Published var aperture = ""
     @Published var iso = ""
+    @Published var note = ""
 
     init?(url: URL, cameras: MapTable, lenses: MapTable) {
         guard let src = CGImageSourceCreateWithURL(url as CFURL, nil),
@@ -91,7 +95,12 @@ final class Photo: ObservableObject, Identifiable {
         if let l = exif[kCGImagePropertyExifLensModel] as? String {
             lens = lenses.lookup(l) ?? l
         }
-        if let f = exif[kCGImagePropertyExifFocalLength] as? Double { focal = Photo.trim(f) }
+        if let f = exif[kCGImagePropertyExifFocalLength] as? Double {
+            // デジタルズーム(RX1R IIIのStep Cropなど)は実効焦点距離に掛ける
+            let z = (exif[kCGImagePropertyExifDigitalZoomRatio] as? Double) ?? 1
+            focal = String(Int((f * (z > 1 ? z : 1)).rounded()))
+            if z > 1.01 { note = "*Step Crop: \(focal)mm equiv." }   // 備考を有効にしたときの初期値
+        }
         if let t = exif[kCGImagePropertyExifExposureTime] as? Double { shutter = Photo.shutterText(t) }
         if let a = exif[kCGImagePropertyExifFNumber] as? Double { aperture = Photo.trim(a) }
         if let i = (exif[kCGImagePropertyExifISOSpeedRatings] as? [Int])?.first { iso = String(i) }
@@ -123,8 +132,8 @@ final class AppModel: ObservableObject {
     @Published var name: String { didSet { save() } }
     @Published var status = ""
 
-    let cameras = MapTable(fileName: "cameras.json", defaults: DefaultTables.cameras)
-    let lenses = MapTable(fileName: "lenses.json", defaults: DefaultTables.lenses)
+    let cameras = MapTable(fileName: "cameras.json", defaults: DefaultTables.cameras, version: DefaultTables.version)
+    let lenses = MapTable(fileName: "lenses.json", defaults: DefaultTables.lenses, version: DefaultTables.version)
 
     init() {
         let d = UserDefaults.standard
@@ -135,7 +144,7 @@ final class AppModel: ObservableObject {
             .init(kind: .focal, enabled: true), .init(kind: .shutter, enabled: true),
             .init(kind: .aperture, enabled: true), .init(kind: .iso, enabled: true),
             .init(kind: .studentID, enabled: false), .init(kind: .name, enabled: false),
-            .init(kind: .title, enabled: false),
+            .init(kind: .title, enabled: false), .init(kind: .note, enabled: false),
         ]
         if let data = d.data(forKey: "fields"),
            var saved = try? JSONDecoder().decode([FieldSetting].self, from: data) {

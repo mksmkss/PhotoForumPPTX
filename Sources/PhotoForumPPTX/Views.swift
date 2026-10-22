@@ -8,6 +8,11 @@ struct PhotoForumApp: App {
         WindowGroup {
             ContentView().environmentObject(model).frame(minWidth: 820, minHeight: 560)
         }
+        .commands {
+            CommandGroup(after: .appInfo) {
+                Button("アップデート… (v\(Updater.currentVersion))") { Updater.chooseZip() }
+            }
+        }
         Settings {
             SettingsView().environmentObject(model)
         }
@@ -32,7 +37,11 @@ struct ContentView: View {
         .onDrop(of: [.fileURL], isTargeted: $targeted) { providers in
             for p in providers {
                 _ = p.loadObject(ofClass: URL.self) { url, _ in
-                    if let url { Task { @MainActor in model.add(urls: [url]) } }
+                    guard let url else { return }
+                    Task { @MainActor in
+                        // zip をドロップしたらアップデートとして扱う
+                        if url.pathExtension.lowercased() == "zip" { Updater.install(zip: url) } else { model.add(urls: [url]) }
+                    }
                 }
             }
             return true
@@ -44,7 +53,7 @@ struct ContentView: View {
         VStack(spacing: 0) {
             HStack {
                 Button("写真を選択…") { model.openPanel() }
-                Text("(ドラッグ&ドロップも可)").foregroundStyle(.secondary).font(.caption)
+                Text("(ドラッグ&ドロップも可 / 新しいzipを落とすとアップデート)").foregroundStyle(.secondary).font(.caption)
                 Spacer()
                 Button("書き出し (.pptx)") { model.export() }
                     .buttonStyle(.borderedProminent).disabled(model.photos.isEmpty)
@@ -67,7 +76,7 @@ struct ContentView: View {
     var sidebar: some View {
         VStack(alignment: .leading, spacing: 10) {
             Text("スライドに入れる項目").font(.headline)
-            Text("学籍番号・氏名・タイトルは上から順に配置。カメラ・レンズ・露出情報はテンプレート通り下部(赤線の上下)に固定です。")
+            Text("学籍番号・氏名・タイトルは上から順に配置。カメラ・レンズ・露出情報は下部(赤線の上下)、焦点距離は右カラム中央に固定です。")
                 .font(.caption).foregroundStyle(.secondary)
             List {
                 ForEach($model.fields) { $f in
@@ -101,6 +110,9 @@ struct PhotoRow: View {
                 Text(photo.url.lastPathComponent).font(.caption).foregroundStyle(.secondary)
                 if model.fields.first(where: { $0.kind == .title })?.enabled == true {
                     TextField("作品タイトル", text: $photo.title)
+                }
+                if model.fields.first(where: { $0.kind == .note })?.enabled == true {
+                    TextField("備考 (例: *Step Crop: 70mm equiv.)", text: $photo.note)
                 }
                 Grid(alignment: .leading, horizontalSpacing: 6, verticalSpacing: 3) {
                     GridRow { suggestField("カメラ", $photo.camera, cameraCandidates); suggestField("レンズ", $photo.lens, lensCandidates) }

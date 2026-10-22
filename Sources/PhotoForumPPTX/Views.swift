@@ -13,7 +13,9 @@ struct PhotoForumApp: App {
                 Button("アップデートを確認…") { Task { await model.checkForUpdate(manual: true) } }
                 Button("zipファイルからアップデート…") { Updater.chooseZip() }
             }
+            HelpCommands()
         }
+        Window("使い方", id: "help") { HelpView() }
         Settings {
             SettingsView().environmentObject(model)
         }

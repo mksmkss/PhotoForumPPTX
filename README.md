@@ -33,6 +33,10 @@ gh release create v1.3 dist/PhotoForumPPTX.zip --title "v1.3" --notes "変更点
 ```
 アプリは GitHub Releases の最新タグ(`vX.Y`)と自身のバージョンを比べて、新しければ `PhotoForumPPTX.zip` を取得します。
 
+## 困ったとき・要望
+メニューバーの **Help → 使い方** に説明があります。不具合や「こうなっていたら嬉しい」という要望は、
+**Help → 不具合・要望を報告 (GitHub Issue)…** から [Issue](https://github.com/mksmkss/PhotoForumPPTX/issues) を立ててください(GitHubアカウントが必要。アプリのバージョンとmacOSの情報が入った状態で書き始められます)。
+
 ## 使い方
 - 「写真を選択…」またはドラッグ&ドロップ。写真ごとにEXIFの値を手修正できます。
 - 右のリストで、スライドに入れる項目を選択(学籍番号・氏名・タイトルは初期オフ)。

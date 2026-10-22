@@ -180,6 +180,7 @@ struct SettingsView: View {
             TableEditor(title: "EXIFのレンズ名 → 表示名\n(未登録ならEXIFの名前をそのまま使います)",
                         keyLabel: "EXIFのレンズ名", valueLabel: "表示名", table: model.lenses)
                 .tabItem { Text("レンズ名") }
+            FontSettings().tabItem { Text("フォント") }
         }
         .frame(width: 560, height: 460).padding()
     }
@@ -261,5 +262,37 @@ struct SuggestField: View {
             }
         }
         .onChange(of: text) { _ in if focused { open = true } }
+    }
+}
+
+/// スライドに使うフォントの初期値(欧文・和文)
+struct FontSettings: View {
+    @EnvironmentObject var model: AppModel
+    private let families = NSFontManager.shared.availableFontFamilies.sorted()
+
+    /// 一覧にない名前(テンプレート既定のMS Pゴシックなど)も選択肢に残す
+    private func options(_ current: String) -> [String] {
+        families.contains(current) ? families : [current] + families
+    }
+
+    var body: some View {
+        Form {
+            Picker("欧文フォント", selection: $model.fonts.latin) {
+                ForEach(options(model.fonts.latin), id: \.self) { Text($0).tag($0) }
+            }
+            Picker("和文フォント", selection: $model.fonts.ea) {
+                ForEach(options(model.fonts.ea), id: \.self) { Text($0).tag($0) }
+            }
+            Text("Shutter Speed: 1/800 sec   α1 II / ILCE-1M2   「作品タイトル」")
+                .font(.custom(model.fonts.latin, size: 14)).padding(.vertical, 6)
+            HStack {
+                Button("テンプレートの既定に戻す") { model.fonts = .template }
+                Spacer()
+            }
+            Text("pptxを開く環境に、選んだフォントが入っていないと別のフォントで表示されます。配布や提出には、Calibri や游ゴシックなど標準的なものがおすすめです。")
+                .font(.caption).foregroundStyle(.secondary)
+        }
+        .padding()
+        .frame(maxHeight: .infinity, alignment: .top)
     }
 }

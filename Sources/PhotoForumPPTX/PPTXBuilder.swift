@@ -13,6 +13,13 @@ enum PPTXError: LocalizedError {
     }
 }
 
+struct SlideFonts: Equatable {
+    var latin: String
+    var ea: String
+    /// テンプレートの既定
+    static let template = SlideFonts(latin: "Calibri", ea: "ＭＳ Ｐゴシック")
+}
+
 enum PPTXBuilder {
     // テンプレートの寸法 (EMU)
     static let slideH = 5143500
@@ -21,7 +28,7 @@ enum PPTXBuilder {
     static let startY = 180783
 
     static func build(template: URL, output: URL, photos: [Photo], fields: [FieldSetting],
-                      studentID: String, name: String) throws {
+                      studentID: String, name: String, fonts: SlideFonts = .template) throws {
         let fm = FileManager.default
         let work = fm.temporaryDirectory.appendingPathComponent("pfp-\(UUID().uuidString)")
         defer { try? fm.removeItem(at: work) }
@@ -44,7 +51,7 @@ enum PPTXBuilder {
             let n = i + 1
             let imgName = "photo\(n).jpeg"
             try writeJPEG(photo, to: pkg.appendingPathComponent("ppt/media/\(imgName)"))
-            let xml = slideXML(photo: photo, fields: fields, studentID: studentID, name: name)
+            let xml = slideXML(photo: photo, fields: fields, studentID: studentID, name: name, fonts: fonts)
             try xml.write(to: pkg.appendingPathComponent("ppt/slides/slide\(n).xml"), atomically: true, encoding: .utf8)
             let rels = """
             <?xml version="1.0" encoding="UTF-8" standalone="yes"?>
@@ -75,7 +82,7 @@ enum PPTXBuilder {
 
     // MARK: - スライド生成
 
-    static func slideXML(photo: Photo, fields: [FieldSetting], studentID: String, name: String) -> String {
+    static func slideXML(photo: Photo, fields: [FieldSetting], studentID: String, name: String, fonts: SlideFonts) -> String {
         // 写真: 左寄せ・高さいっぱい。横長すぎて右カラムに掛かる場合のみ幅に合わせて縮小
         let aspect = photo.pixelSize.width / photo.pixelSize.height
         var w = Int((Double(slideH) * aspect).rounded()), h = slideH
@@ -93,7 +100,7 @@ enum PPTXBuilder {
             Int(Double(estimateLines(text, size: k.fontSize)) * k.fontSize * 1.2 * 12700) + 91440
         }
         func emit(_ k: FieldKind, _ text: String, y: Int, left: Bool = false) {
-            shapes += textShape(id: id, y: y, h: height(k, text), text: text, size: k.fontSize, left: left, indent: k == .note); id += 1
+            shapes += textShape(id: id, y: y, h: height(k, text), text: text, size: k.fontSize, left: left, indent: k == .note, fonts: fonts); id += 1
         }
         let items: [(FieldKind, String)] = fields.filter(\.enabled).compactMap { f in
             lineText(f.kind, photo: photo, studentID: studentID, name: name).flatMap { $0.isEmpty ? nil : (f.kind, $0) }
@@ -165,13 +172,13 @@ enum PPTXBuilder {
         s.replacingOccurrences(of: "&", with: "&amp;").replacingOccurrences(of: "<", with: "&lt;").replacingOccurrences(of: ">", with: "&gt;")
     }
 
-    static func textShape(id: Int, y: Int, h: Int, text: String, size: Double, left: Bool = false, indent: Bool = false) -> String {
+    static func textShape(id: Int, y: Int, h: Int, text: String, size: Double, left: Bool = false, indent: Bool = false, fonts: SlideFonts = .template) -> String {
         let sz = Int(size * 100)
         // 左寄せはテンプレートの露出情報ボックスと同じ位置・幅(赤線の左端に文字頭を揃える)
         let x = left ? 7817724 : colX, w = left ? 1326277 : colW
         let ppr = left ? "<a:pPr algn=\"l\"\(indent ? " marL=\"54000\"" : "")/>" : "<a:pPr algn=\"ctr\"/>"
         return """
-        <p:sp><p:nvSpPr><p:cNvPr id="\(id)" name="テキスト \(id)"/><p:cNvSpPr txBox="1"/><p:nvPr/></p:nvSpPr><p:spPr><a:xfrm><a:off x="\(x)" y="\(y)"/><a:ext cx="\(w)" cy="\(h)"/></a:xfrm><a:prstGeom prst="rect"><a:avLst/></a:prstGeom><a:noFill/></p:spPr><p:txBody><a:bodyPr wrap="square" rtlCol="0"><a:spAutoFit/></a:bodyPr><a:lstStyle/><a:p>\(ppr)<a:r><a:rPr lang="ja-JP" altLang="en-US" sz="\(sz)" dirty="0"><a:solidFill><a:prstClr val="white"/></a:solidFill><a:latin typeface="Calibri"/><a:ea typeface="ＭＳ Ｐゴシック" panose="020B0600070205080204" pitchFamily="34" charset="-128"/></a:rPr><a:t>\(esc(text))</a:t></a:r></a:p></p:txBody></p:sp>
+        <p:sp><p:nvSpPr><p:cNvPr id="\(id)" name="テキスト \(id)"/><p:cNvSpPr txBox="1"/><p:nvPr/></p:nvSpPr><p:spPr><a:xfrm><a:off x="\(x)" y="\(y)"/><a:ext cx="\(w)" cy="\(h)"/></a:xfrm><a:prstGeom prst="rect"><a:avLst/></a:prstGeom><a:noFill/></p:spPr><p:txBody><a:bodyPr wrap="square" rtlCol="0"><a:spAutoFit/></a:bodyPr><a:lstStyle/><a:p>\(ppr)<a:r><a:rPr lang="ja-JP" altLang="en-US" sz="\(sz)" dirty="0"><a:solidFill><a:prstClr val="white"/></a:solidFill><a:latin typeface="\(esc(fonts.latin))"/><a:ea typeface="\(esc(fonts.ea))"/></a:rPr><a:t>\(esc(text))</a:t></a:r></a:p></p:txBody></p:sp>
         """
     }
 

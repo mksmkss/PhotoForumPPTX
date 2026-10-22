@@ -132,6 +132,7 @@ final class AppModel: ObservableObject {
     @Published var name: String { didSet { save() } }
     @Published var status = ""
     @Published var update: ReleaseCheck.Found?
+    @Published var fonts: SlideFonts { didSet { saveFonts() } }
     @Published var updating = false
 
     let cameras = MapTable(fileName: "cameras.json", defaults: DefaultTables.cameras, version: DefaultTables.version)
@@ -141,6 +142,8 @@ final class AppModel: ObservableObject {
         let d = UserDefaults.standard
         studentID = d.string(forKey: "studentID") ?? ""
         name = d.string(forKey: "name") ?? ""
+        fonts = SlideFonts(latin: d.string(forKey: "fontLatin") ?? SlideFonts.template.latin,
+                           ea: d.string(forKey: "fontEA") ?? SlideFonts.template.ea)
         let defaultFields: [FieldSetting] = [
             .init(kind: .camera, enabled: true), .init(kind: .lens, enabled: true),
             .init(kind: .focal, enabled: true), .init(kind: .shutter, enabled: true),
@@ -155,6 +158,11 @@ final class AppModel: ObservableObject {
         } else {
             fields = defaultFields
         }
+    }
+
+    private func saveFonts() {
+        UserDefaults.standard.set(fonts.latin, forKey: "fontLatin")
+        UserDefaults.standard.set(fonts.ea, forKey: "fontEA")
     }
 
     private func save() {
@@ -189,7 +197,7 @@ final class AppModel: ObservableObject {
             let template = Bundle.main.url(forResource: "template", withExtension: "pptx")
                 ?? URL(fileURLWithPath: FileManager.default.currentDirectoryPath + "/Resources/template.pptx")
             try PPTXBuilder.build(template: template, output: out, photos: photos, fields: fields,
-                                  studentID: studentID, name: name)
+                                  studentID: studentID, name: name, fonts: fonts)
             status = "書き出しました: \(out.lastPathComponent)"
             NSWorkspace.shared.activateFileViewerSelecting([out])
         } catch {

@@ -16,7 +16,7 @@ enum Updater {
         if panel.runModal() == .OK, let url = panel.url { install(zip: url) }
     }
 
-    static func install(zip: URL) {
+    static func install(zip: URL, confirm: Bool = true) {
         let fm = FileManager.default
         let work = fm.temporaryDirectory.appendingPathComponent("pfp-update-\(UUID().uuidString)")
         do {
@@ -31,12 +31,14 @@ enum Updater {
                 throw PPTXError.tool("\(dest.deletingLastPathComponent().path) に書き込めません。READMEの1行コマンドで更新してください")
             }
 
-            let alert = NSAlert()
-            alert.messageText = "v\(currentVersion) → v\(newVersion) に更新しますか?"
-            alert.informativeText = "アプリを終了して入れ替え、自動で再起動します。"
-            alert.addButton(withTitle: "更新して再起動")
-            alert.addButton(withTitle: "キャンセル")
-            guard alert.runModal() == .alertFirstButtonReturn else { try? fm.removeItem(at: work); return }
+            if confirm {
+                let alert = NSAlert()
+                alert.messageText = "v\(currentVersion) → v\(newVersion) に更新しますか?"
+                alert.informativeText = "アプリを終了して入れ替え、自動で再起動します。"
+                alert.addButton(withTitle: "更新して再起動")
+                alert.addButton(withTitle: "キャンセル")
+                guard alert.runModal() == .alertFirstButtonReturn else { try? fm.removeItem(at: work); return }
+            }
 
             // 自分の終了を待ってから入れ替える(終了後も動くよう別プロセスで)
             let script = work.appendingPathComponent("update.sh")

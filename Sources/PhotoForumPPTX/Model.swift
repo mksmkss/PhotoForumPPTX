@@ -131,6 +131,8 @@ final class AppModel: ObservableObject {
     @Published var studentID: String { didSet { save() } }
     @Published var name: String { didSet { save() } }
     @Published var status = ""
+    @Published var update: ReleaseCheck.Found?
+    @Published var updating = false
 
     let cameras = MapTable(fileName: "cameras.json", defaults: DefaultTables.cameras, version: DefaultTables.version)
     let lenses = MapTable(fileName: "lenses.json", defaults: DefaultTables.lenses, version: DefaultTables.version)
@@ -192,6 +194,32 @@ final class AppModel: ObservableObject {
             NSWorkspace.shared.activateFileViewerSelecting([out])
         } catch {
             status = "失敗: \(error.localizedDescription)"
+        }
+    }
+
+    /// 最新版の確認。manual=true のときは「最新です」「失敗」も表示する
+    func checkForUpdate(manual: Bool = false) async {
+        do {
+            if let f = try await ReleaseCheck.newer(than: Updater.currentVersion) {
+                update = f
+            } else if manual {
+                status = "最新版です (v\(Updater.currentVersion))"
+            }
+        } catch {
+            if manual { status = "更新の確認に失敗しました: \(error.localizedDescription)" }
+        }
+    }
+
+    /// ボタンひとつ: ダウンロード → 入れ替え → 再起動
+    func installUpdate() async {
+        guard let f = update, !updating else { return }
+        updating = true
+        defer { updating = false }
+        do {
+            let zip = try await ReleaseCheck.download(f.zipURL)
+            Updater.install(zip: zip, confirm: false)
+        } catch {
+            status = "ダウンロードに失敗しました: \(error.localizedDescription)"
         }
     }
 }

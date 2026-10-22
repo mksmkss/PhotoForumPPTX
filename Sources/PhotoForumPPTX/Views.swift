@@ -10,7 +10,8 @@ struct PhotoForumApp: App {
         }
         .commands {
             CommandGroup(after: .appInfo) {
-                Button("アップデート… (v\(Updater.currentVersion))") { Updater.chooseZip() }
+                Button("アップデートを確認…") { Task { await model.checkForUpdate(manual: true) } }
+                Button("zipファイルからアップデート…") { Updater.chooseZip() }
             }
         }
         Settings {
@@ -24,11 +25,15 @@ struct ContentView: View {
     @State private var targeted = false
 
     var body: some View {
-        HStack(spacing: 0) {
-            photoList
-            Divider()
-            sidebar.frame(width: 260)
+        VStack(spacing: 0) {
+            if let u = model.update { updateBanner(u) }
+            HStack(spacing: 0) {
+                photoList
+                Divider()
+                sidebar.frame(width: 260)
+            }
         }
+        .task { await model.checkForUpdate() }
         .overlay(alignment: .bottom) {
             if !model.status.isEmpty {
                 Text(model.status).padding(8).background(.regularMaterial, in: Capsule()).padding(.bottom, 8)
@@ -47,6 +52,20 @@ struct ContentView: View {
             return true
         }
         .overlay { if targeted { RoundedRectangle(cornerRadius: 8).stroke(Color.accentColor, lineWidth: 3).padding(4) } }
+    }
+
+    func updateBanner(_ u: ReleaseCheck.Found) -> some View {
+        HStack {
+            Image(systemName: "arrow.down.circle.fill")
+            Text("新しい版 v\(u.version) があります(現在 v\(Updater.currentVersion))")
+            Spacer()
+            if model.updating { ProgressView().controlSize(.small); Text("更新中…") }
+            else {
+                Button("あとで") { model.update = nil }
+                Button("今すぐ更新") { Task { await model.installUpdate() } }.buttonStyle(.borderedProminent)
+            }
+        }
+        .padding(8).background(Color.accentColor.opacity(0.18))
     }
 
     var photoList: some View {

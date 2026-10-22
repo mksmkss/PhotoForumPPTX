@@ -1,6 +1,7 @@
 #!/bin/sh
 # PhotoForumPPTX.app を作って配布用zipにまとめる (Xcode不要、Command Line Toolsだけで可)
 set -e
+VERSION=${VERSION:-1.1}   # リリース時: VERSION=1.2 ./build.sh
 cd "$(dirname "$0")"
 mkdir -p .build
 for a in arm64 x86_64; do
@@ -19,8 +20,8 @@ cat > $APP/Contents/Info.plist <<P
 <key>CFBundleIdentifier</key><string>local.photoforumpptx</string>
 <key>CFBundleIconFile</key><string>AppIcon</string>
 <key>CFBundlePackageType</key><string>APPL</string>
-<key>CFBundleVersion</key><string>2</string>
-<key>CFBundleShortVersionString</key><string>1.1</string>
+<key>CFBundleVersion</key><string>$VERSION</string>
+<key>CFBundleShortVersionString</key><string>$VERSION</string>
 <key>LSMinimumSystemVersion</key><string>13.0</string>
 <key>NSHighResolutionCapable</key><true/>
 </dict></plist>

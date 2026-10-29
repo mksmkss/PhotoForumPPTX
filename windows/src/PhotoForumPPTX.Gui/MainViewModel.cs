@@ -7,25 +7,39 @@ namespace PhotoForumPPTX.Gui;
 
 public sealed partial class MainViewModel : ObservableObject
 {
+    /// <summary>Mac版の既定(カメラ・レンズ・焦点距離・露出は有効、個人情報は無効)に合わせる</summary>
+    private static readonly FieldSetting[] DefaultFieldSettings =
+    {
+        new(FieldKind.Camera, true),
+        new(FieldKind.Lens, true),
+        new(FieldKind.Focal, true),
+        new(FieldKind.Shutter, true),
+        new(FieldKind.Aperture, true),
+        new(FieldKind.Iso, true),
+        new(FieldKind.StudentId, false),
+        new(FieldKind.Name, false),
+        new(FieldKind.Title, false),
+        new(FieldKind.Note, false),
+    };
+
     private readonly MapTable _cameras;
     private readonly MapTable _lenses;
     private readonly string _templatePath;
     private readonly IDialogService _dialogService;
+    private readonly AppSettings _settings;
+    private readonly string? _settingsDir;
 
     public ObservableCollection<PhotoItemViewModel> Photos { get; } = new();
     public ObservableCollection<FieldSettingViewModel> Fields { get; }
 
     [ObservableProperty]
-    private string _studentId = "";
+    private string _studentId;
 
     [ObservableProperty]
-    private string _name = "";
+    private string _name;
 
     [ObservableProperty]
     private string _status = "";
-
-    [ObservableProperty]
-    private bool _openAfterExport = true;
 
     public bool HasPhotos => Photos.Count > 0;
 
@@ -48,14 +62,23 @@ public sealed partial class MainViewModel : ObservableObject
         .Where(s => !string.IsNullOrEmpty(s))
         .Distinct();
 
-    public MainViewModel(MapTable cameras, MapTable lenses, string templatePath, IDialogService dialogService)
+    public MainViewModel(MapTable cameras, MapTable lenses, string templatePath, IDialogService dialogService,
+        AppSettings settings, string? settingsDir = null)
     {
         _cameras = cameras;
         _lenses = lenses;
         _templatePath = templatePath;
         _dialogService = dialogService;
+        _settings = settings;
+        _settingsDir = settingsDir;
 
-        Fields = new ObservableCollection<FieldSettingViewModel>(DefaultFields());
+        _studentId = settings.StudentId;
+        _name = settings.Name;
+
+        Fields = new ObservableCollection<FieldSettingViewModel>(LoadFields(settings));
+        foreach (var f in Fields) f.PropertyChanged += (_, _) => PersistFields();
+        Fields.CollectionChanged += (_, _) => PersistFields();
+
         Photos.CollectionChanged += (_, _) =>
         {
             OnPropertyChanged(nameof(HasPhotos));
@@ -64,20 +87,32 @@ public sealed partial class MainViewModel : ObservableObject
         };
     }
 
-    /// <summary>Mac版の既定(カメラ・レンズ・焦点距離・露出は有効、個人情報は無効)に合わせる</summary>
-    private static IEnumerable<FieldSettingViewModel> DefaultFields() => new[]
+    /// <summary>保存済みの項目設定に、追加された既定項目(未登録のkind)を末尾へ補う</summary>
+    private static IEnumerable<FieldSettingViewModel> LoadFields(AppSettings settings)
     {
-        new FieldSettingViewModel(FieldKind.Camera, true),
-        new FieldSettingViewModel(FieldKind.Lens, true),
-        new FieldSettingViewModel(FieldKind.Focal, true),
-        new FieldSettingViewModel(FieldKind.Shutter, true),
-        new FieldSettingViewModel(FieldKind.Aperture, true),
-        new FieldSettingViewModel(FieldKind.Iso, true),
-        new FieldSettingViewModel(FieldKind.StudentId, false),
-        new FieldSettingViewModel(FieldKind.Name, false),
-        new FieldSettingViewModel(FieldKind.Title, false),
-        new FieldSettingViewModel(FieldKind.Note, false),
-    };
+        var merged = new List<FieldSetting>(settings.Fields);
+        foreach (var d in DefaultFieldSettings)
+            if (!merged.Any(f => f.Kind == d.Kind)) merged.Add(d);
+        return merged.Select(f => new FieldSettingViewModel(f.Kind, f.Enabled));
+    }
+
+    partial void OnStudentIdChanged(string value)
+    {
+        _settings.StudentId = value;
+        AppSettingsStore.Save(_settings, _settingsDir);
+    }
+
+    partial void OnNameChanged(string value)
+    {
+        _settings.Name = value;
+        AppSettingsStore.Save(_settings, _settingsDir);
+    }
+
+    private void PersistFields()
+    {
+        _settings.Fields = Fields.Select(f => f.ToFieldSetting()).ToList();
+        AppSettingsStore.Save(_settings, _settingsDir);
+    }
 
     /// <summary>写真を追加する。読み込みに失敗したファイルはスキップしてStatusに表示する</summary>
     public void AddPhotos(IEnumerable<string> paths)
@@ -141,11 +176,12 @@ public sealed partial class MainViewModel : ObservableObject
         if (Photos.Count == 0) return;
         var fields = Fields.Select(f => f.ToFieldSetting()).ToList();
         var photoInfos = Photos.Select(p => p.Info).ToList();
+        var fonts = new SlideFonts(_settings.FontLatin, _settings.FontEa);
         try
         {
-            await Task.Run(() => PptxBuilder.Build(_templatePath, outputPath, photoInfos, fields, StudentId, Name));
+            await Task.Run(() => PptxBuilder.Build(_templatePath, outputPath, photoInfos, fields, StudentId, Name, fonts, _settings.LineSpacing));
             Status = $"書き出しました: {Path.GetFileName(outputPath)}";
-            if (OpenAfterExport) _dialogService.OpenFile(outputPath);
+            if (_settings.OpenAfterExport) _dialogService.OpenFile(outputPath);
             else _dialogService.RevealInExplorer(outputPath);
         }
         catch (Exception ex)

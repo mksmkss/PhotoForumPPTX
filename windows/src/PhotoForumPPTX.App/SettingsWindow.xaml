@@ -1,0 +1,97 @@
+﻿<Window x:Class="PhotoForumPPTX.App.SettingsWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:local="clr-namespace:PhotoForumPPTX.App"
+        mc:Ignorable="d"
+        Title="設定" Width="580" Height="480" WindowStartupLocation="CenterOwner" ResizeMode="CanResizeWithGrip">
+    <Window.Resources>
+        <DataTemplate x:Key="MapTableEditorTemplate">
+            <DockPanel Margin="10">
+                <TextBlock DockPanel.Dock="Top" Text="{Binding Caption}" TextWrapping="Wrap"
+                           Foreground="Gray" FontSize="11" Margin="0,0,0,8" />
+                <StackPanel DockPanel.Dock="Bottom" Orientation="Horizontal" Margin="0,8,0,0">
+                    <Button Content="追加" Command="{Binding AddEntryCommand}" Padding="8,4" Margin="0,0,8,0" />
+                    <Button Content="初期値に戻す" Command="{Binding ResetEntriesCommand}" Padding="8,4" />
+                </StackPanel>
+                <ScrollViewer VerticalScrollBarVisibility="Auto">
+                    <ItemsControl x:Name="EntriesItemsControl" ItemsSource="{Binding Entries}">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <DockPanel Margin="0,3">
+                                    <Button DockPanel.Dock="Right" Content="✕" Width="24" Foreground="DarkRed"
+                                            Command="{Binding DataContext.RemoveEntryCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
+                                            CommandParameter="{Binding}" />
+                                    <TextBox Text="{Binding Key, UpdateSourceTrigger=PropertyChanged}" Width="200" Margin="0,0,6,0" />
+                                    <TextBlock Text="→" VerticalAlignment="Center" Margin="0,0,6,0" />
+                                    <TextBox Text="{Binding Value, UpdateSourceTrigger=PropertyChanged}" Width="200" />
+                                </DockPanel>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </ScrollViewer>
+            </DockPanel>
+        </DataTemplate>
+    </Window.Resources>
+
+    <TabControl Margin="10">
+        <TabItem Header="一般">
+            <StackPanel Margin="14">
+                <CheckBox Content="書き出したらpptxを自動で開く" IsChecked="{Binding OpenAfterExport}" />
+                <TextBlock Text="オフにすると、書き出したファイルをエクスプローラーで表示します。"
+                           Foreground="Gray" FontSize="11" Margin="0,6,0,0" TextWrapping="Wrap" />
+            </StackPanel>
+        </TabItem>
+
+        <TabItem Header="カメラ名">
+            <ContentControl Content="{Binding CameraTable}" ContentTemplate="{StaticResource MapTableEditorTemplate}" />
+        </TabItem>
+
+        <TabItem Header="レンズ名">
+            <ContentControl Content="{Binding LensTable}" ContentTemplate="{StaticResource MapTableEditorTemplate}" />
+        </TabItem>
+
+        <TabItem Header="フォント">
+            <StackPanel Margin="14">
+                <TextBlock Text="欧文フォント" FontWeight="Bold" Margin="0,0,0,4" />
+                <ComboBox ItemsSource="{Binding AvailableLatinFonts}" SelectedItem="{Binding FontLatin}" Width="260" HorizontalAlignment="Left" />
+
+                <TextBlock Text="和文フォント" FontWeight="Bold" Margin="0,14,0,4" />
+                <ComboBox ItemsSource="{Binding AvailableEaFonts}" SelectedItem="{Binding FontEa}" Width="260" HorizontalAlignment="Left" />
+
+                <TextBlock Margin="0,16,0,0" FontSize="14"
+                           Text="Shutter Speed: 1/800 sec   α1 II / ILCE-1M2   「作品タイトル」" />
+
+                <Button Content="初期値(Arial)に戻す" Command="{Binding ResetFontsCommand}" Padding="8,4" Margin="0,14,0,0" HorizontalAlignment="Left" />
+
+                <TextBlock TextWrapping="Wrap" Foreground="Gray" FontSize="11" Margin="0,14,0,0"
+                           Text="pptxを開く環境に、選んだフォントが入っていないと別のフォントで表示されます。配布や提出には、Calibri や游ゴシックなど標準的なものがおすすめです。" />
+            </StackPanel>
+        </TabItem>
+
+        <TabItem Header="行間">
+            <StackPanel Margin="14">
+                <DockPanel>
+                    <TextBlock DockPanel.Dock="Right" Width="50" TextAlignment="Right"
+                               Text="{Binding LineSpacing, StringFormat={}{0:P0}}" />
+                    <Slider Minimum="0.8" Maximum="2.0" TickFrequency="0.05" IsSnapToTickEnabled="True"
+                            Value="{Binding LineSpacing}" />
+                </DockPanel>
+
+                <Border Background="Black" Padding="10" Margin="0,16,0,0" HorizontalAlignment="Left">
+                    <StackPanel>
+                        <TextBlock Text="Shutter Speed: 1/800 sec" Foreground="White" FontSize="12" />
+                        <TextBlock Text="Aperture: f/2.8" Foreground="White" FontSize="12" />
+                        <TextBlock Text="ISO: 400" Foreground="White" FontSize="12" />
+                    </StackPanel>
+                </Border>
+
+                <Button Content="100%に戻す" Command="{Binding ResetLineSpacingCommand}" Padding="8,4" Margin="0,14,0,0" HorizontalAlignment="Left" />
+
+                <TextBlock TextWrapping="Wrap" Foreground="Gray" FontSize="11" Margin="0,14,0,0"
+                           Text="線の下の撮影情報(Shutter Speed / Aperture / ISO / 備考)を1つのテキストボックスにまとめ、その中の行間を指定します。" />
+            </StackPanel>
+        </TabItem>
+    </TabControl>
+</Window>

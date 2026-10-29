@@ -48,6 +48,13 @@ public sealed class MapTable
         File.WriteAllText(_path, JsonSerializer.Serialize(Entries));
     }
 
+    /// <summary>設定画面での編集結果を丸ごと差し替えて保存する</summary>
+    public void Replace(IEnumerable<MapEntry> entries)
+    {
+        Entries = entries.ToList();
+        Save();
+    }
+
     public void Reset()
     {
         Entries = new List<MapEntry>(_defaults);

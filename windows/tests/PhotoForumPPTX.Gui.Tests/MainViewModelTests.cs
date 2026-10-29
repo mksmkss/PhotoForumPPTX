@@ -18,12 +18,15 @@ public class MainViewModelTests : IDisposable
         if (Directory.Exists(_dir)) Directory.Delete(_dir, true);
     }
 
-    private MainViewModel CreateViewModel(out FakeDialogService dialog)
+    private MainViewModel CreateViewModel(out FakeDialogService dialog) => CreateViewModel(out dialog, out _);
+
+    private MainViewModel CreateViewModel(out FakeDialogService dialog, out AppSettings settings)
     {
         dialog = new FakeDialogService();
+        settings = new AppSettings();
         var cameras = new MapTable("cameras.json", DefaultTables.Cameras, DefaultTables.Version, storageDir: _dir);
         var lenses = new MapTable("lenses.json", DefaultTables.Lenses, DefaultTables.Version, storageDir: _dir);
-        return new MainViewModel(cameras, lenses, _templatePath, dialog);
+        return new MainViewModel(cameras, lenses, _templatePath, dialog, settings, _dir);
     }
 
     [Fact]
@@ -112,8 +115,8 @@ public class MainViewModelTests : IDisposable
     [Fact]
     public async Task ExportAsync_ProducesSlidePerPhoto_AndOpensFileWhenConfigured()
     {
-        var vm = CreateViewModel(out var dialog);
-        vm.OpenAfterExport = true;
+        var vm = CreateViewModel(out var dialog, out var settings);
+        settings.OpenAfterExport = true;
         vm.StudentId = "99999";
         vm.Name = "hoge";
         vm.AddPhotos(new[] { _sample1, _sample2 });
@@ -135,8 +138,8 @@ public class MainViewModelTests : IDisposable
     [Fact]
     public async Task ExportAsync_RevealsInExplorerWhenOpenAfterExportIsOff()
     {
-        var vm = CreateViewModel(out var dialog);
-        vm.OpenAfterExport = false;
+        var vm = CreateViewModel(out var dialog, out var settings);
+        settings.OpenAfterExport = false;
         vm.AddPhotos(new[] { _sample1 });
 
         var output = Path.Combine(_dir, "out.pptx");
@@ -168,5 +171,27 @@ public class MainViewModelTests : IDisposable
         await vm.ExportCommand.ExecuteAsync(null);
 
         Assert.Empty(Directory.GetFiles(_dir, "*.pptx"));
+    }
+
+    [Fact]
+    public void StudentIdNameAndFields_ArePersistedAndReloaded()
+    {
+        var vm = CreateViewModel(out _, out var settings);
+        vm.StudentId = "12345";
+        vm.Name = "三輪太郎";
+        vm.StudentIdField.Enabled = true;
+
+        var reloaded = AppSettingsStore.Load(_dir);
+        Assert.Equal("12345", reloaded.StudentId);
+        Assert.Equal("三輪太郎", reloaded.Name);
+        Assert.Contains(reloaded.Fields, f => f.Kind == FieldKind.StudentId && f.Enabled);
+
+        // 同じディレクトリから作った新しいMainViewModelは保存済みの状態を引き継ぐ
+        var cameras = new MapTable("cameras.json", DefaultTables.Cameras, DefaultTables.Version, storageDir: _dir);
+        var lenses = new MapTable("lenses.json", DefaultTables.Lenses, DefaultTables.Version, storageDir: _dir);
+        var vm2 = new MainViewModel(cameras, lenses, _templatePath, new FakeDialogService(), reloaded, _dir);
+        Assert.Equal("12345", vm2.StudentId);
+        Assert.Equal("三輪太郎", vm2.Name);
+        Assert.True(vm2.StudentIdField.Enabled);
     }
 }

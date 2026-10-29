@@ -7,14 +7,24 @@ namespace PhotoForumPPTX.App;
 
 public partial class MainWindow : Window
 {
+    private readonly SettingsViewModel _settingsViewModel;
+
     public MainWindow()
     {
         InitializeComponent();
 
+        var settings = AppSettingsStore.Load();
         var cameras = new MapTable("cameras.json", DefaultTables.Cameras, DefaultTables.Version);
         var lenses = new MapTable("lenses.json", DefaultTables.Lenses, DefaultTables.Version);
         var templatePath = Path.Combine(AppContext.BaseDirectory, "Resources", "template.pptx");
-        DataContext = new MainViewModel(cameras, lenses, templatePath, new WpfDialogService());
+
+        _settingsViewModel = new SettingsViewModel(settings, cameras, lenses, new WpfFontCatalog());
+        DataContext = new MainViewModel(cameras, lenses, templatePath, new WpfDialogService(), settings);
+    }
+
+    private void OnOpenSettingsClick(object sender, RoutedEventArgs e)
+    {
+        new SettingsWindow(_settingsViewModel) { Owner = this }.ShowDialog();
     }
 
     private void OnDragOver(object sender, DragEventArgs e)

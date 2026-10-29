@@ -7,6 +7,11 @@ public static class ReleaseNotes
 {
     public static readonly IReadOnlyList<ReleaseNote> All = new[]
     {
+        new ReleaseNote("0.2", new[]
+        {
+            "ヘルプ(使い方・不具合報告)と新機能ポップアップを追加しました",
+            "アップデートを確認し、ボタン1つでダウンロード・入れ替え・再起動できるようになりました",
+        }),
         new ReleaseNote("0.1", new[]
         {
             "写真を選んでEXIF(カメラ・レンズ・焦点距離・SS・F値・ISO)を読み取り、テンプレート通りのpptxを書き出せるようになりました",

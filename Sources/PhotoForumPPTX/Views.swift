@@ -188,6 +188,7 @@ struct SettingsView: View {
     @EnvironmentObject var model: AppModel
     var body: some View {
         TabView {
+            GeneralSettings().tabItem { Label("一般", systemImage: "gearshape") }
             TableEditor(title: "EXIFのカメラ型番 → 表示名\n(例: ILCE-1M2 → α1 II。スライドには「α1 II / ILCE-1M2」と出ます)",
                         keyLabel: "EXIFの型番", valueLabel: "表示名", table: model.cameras)
                 .tabItem { Label("カメラ名", systemImage: "camera") }
@@ -345,6 +346,19 @@ struct BackgroundSettings: View {
             .background(Color(hex: model.bgHex))
             .overlay(Rectangle().stroke(Color.secondary.opacity(0.4)))
             Text("カラーパネルの「スライダー」タブでRGB・CMYKの数値を指定でき、「カラーパレット」などから選ぶこともできます。文字色は背景が明るいと黒、暗いと白に自動で切り替わります。")
+                .font(.caption).foregroundStyle(.secondary)
+        }
+        .padding()
+        .frame(maxHeight: .infinity, alignment: .top)
+    }
+}
+
+struct GeneralSettings: View {
+    @EnvironmentObject var model: AppModel
+    var body: some View {
+        Form {
+            Toggle("書き出したらpptxを自動で開く", isOn: $model.openAfterExport)
+            Text("オフにすると、書き出したファイルをFinderで表示します。")
                 .font(.caption).foregroundStyle(.secondary)
         }
         .padding()

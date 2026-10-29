@@ -140,6 +140,8 @@ final class AppModel: ObservableObject {
     /// スライドの背景色(RRGGBB)。文字色は明るさから自動で決まる
     @Published var bgHex: String { didSet { UserDefaults.standard.set(bgHex, forKey: "bgHex") } }
     var style: SlideStyle { SlideStyle(bgHex: bgHex) }
+    /// 書き出し後にpptxを開く(オフならFinderで表示)
+    @Published var openAfterExport: Bool { didSet { UserDefaults.standard.set(openAfterExport, forKey: "openAfterExport") } }
     @Published var updating = false
     @Published var pendingNotes: [ReleaseNote] = []
 
@@ -161,6 +163,7 @@ final class AppModel: ObservableObject {
                            ea: d.string(forKey: "fontEA") ?? SlideFonts.default.ea)
         lineSpacing = d.object(forKey: "lineSpacing") as? Double ?? 1.0
         bgHex = d.string(forKey: "bgHex") ?? SlideStyle.black.bgHex
+        openAfterExport = d.object(forKey: "openAfterExport") as? Bool ?? true
         let defaultFields: [FieldSetting] = [
             .init(kind: .camera, enabled: true), .init(kind: .lens, enabled: true),
             .init(kind: .focal, enabled: true), .init(kind: .shutter, enabled: true),
@@ -228,7 +231,7 @@ final class AppModel: ObservableObject {
             try PPTXBuilder.build(template: template, output: out, photos: photos, fields: fields,
                                   studentID: studentID, name: name, fonts: fonts, lineSpacing: lineSpacing, style: style)
             status = "書き出しました: \(out.lastPathComponent)"
-            NSWorkspace.shared.activateFileViewerSelecting([out])
+            if openAfterExport { NSWorkspace.shared.open(out) } else { NSWorkspace.shared.activateFileViewerSelecting([out]) }
         } catch {
             status = "失敗: \(error.localizedDescription)"
         }

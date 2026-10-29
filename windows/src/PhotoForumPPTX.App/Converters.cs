@@ -15,6 +15,15 @@ public sealed class InverseBooleanToVisibilityConverter : IValueConverter
         throw new NotSupportedException();
 }
 
+public sealed class NullToVisibilityConverter : IValueConverter
+{
+    public object Convert(object? value, Type targetType, object? parameter, CultureInfo culture) =>
+        value != null ? Visibility.Visible : Visibility.Collapsed;
+
+    public object ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture) =>
+        throw new NotSupportedException();
+}
+
 /// <summary>サムネイル表示用。回転(90/180/270)のみ補正し、左右反転を伴う向きは未対応(書き出し結果には影響しない)</summary>
 public sealed class ThumbnailConverter : IValueConverter
 {

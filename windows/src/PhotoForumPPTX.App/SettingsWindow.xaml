@@ -4,10 +4,12 @@
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:local="clr-namespace:PhotoForumPPTX.App"
+        xmlns:core="clr-namespace:PhotoForumPPTX.Core;assembly=PhotoForumPPTX.Core"
         mc:Ignorable="d"
         Title="設定" Width="580" Height="480" WindowStartupLocation="CenterOwner" ResizeMode="CanResizeWithGrip">
     <Window.Resources>
         <local:LineSpacingToHeightConverter x:Key="LineSpacingToHeightConverter" />
+        <local:NullToVisibilityConverter x:Key="NullToVisibilityConverter" />
         <DataTemplate x:Key="MapTableEditorTemplate">
             <DockPanel Margin="10">
                 <TextBlock DockPanel.Dock="Top" Text="{Binding Caption}" TextWrapping="Wrap"
@@ -97,6 +99,35 @@
 
                 <TextBlock TextWrapping="Wrap" Foreground="Gray" FontSize="11" Margin="0,14,0,0"
                            Text="線の下の撮影情報(Shutter Speed / Aperture / ISO / 備考)を1つのテキストボックスにまとめ、その中の行間を指定します。" />
+            </StackPanel>
+        </TabItem>
+
+        <TabItem Header="情報">
+            <StackPanel Margin="20" HorizontalAlignment="Center">
+                <TextBlock Text="写真フォーラムPPTX (Windows)" FontSize="16" FontWeight="Bold" HorizontalAlignment="Center" />
+                <TextBlock Margin="0,4,0,16" Foreground="Gray" HorizontalAlignment="Center">
+                    <Run Text="バージョン " /><Run Text="{x:Static core:AppInfo.Version}" />
+                </TextBlock>
+
+                <TextBlock HorizontalAlignment="Center" Margin="0,0,0,8" FontWeight="Bold"
+                           Text="{Binding Update.Available.Version, StringFormat=新しい版 v{0} があります}"
+                           Visibility="{Binding Update.Available, Converter={StaticResource NullToVisibilityConverter}}" />
+
+                <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,0,0,16">
+                    <Button Content="アップデートを確認" Command="{Binding Update.CheckCommand}" Padding="8,4" Margin="0,0,8,0" />
+                    <TextBlock Text="{Binding Update.Status}" Foreground="Gray" VerticalAlignment="Center" />
+                </StackPanel>
+
+                <Separator Margin="0,0,0,16" />
+
+                <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,0,0,8">
+                    <Button Content="新機能(更新履歴)" Click="OnWhatsNewFromSettingsClick" Padding="8,4" Margin="0,0,8,0" />
+                    <Button Content="使い方" Click="OnHelpFromSettingsClick" Padding="8,4" />
+                </StackPanel>
+                <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
+                    <Button Content="不具合・要望を報告" Click="OnReportIssueFromSettingsClick" Padding="8,4" Margin="0,0,8,0" />
+                    <Button Content="GitHub リポジトリ" Click="OnOpenRepoFromSettingsClick" Padding="8,4" />
+                </StackPanel>
             </StackPanel>
         </TabItem>
     </TabControl>

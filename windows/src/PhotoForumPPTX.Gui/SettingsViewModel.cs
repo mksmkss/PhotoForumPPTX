@@ -12,6 +12,7 @@ public sealed partial class SettingsViewModel : ObservableObject
 
     public MapTableViewModel CameraTable { get; }
     public MapTableViewModel LensTable { get; }
+    public UpdateViewModel Update { get; }
 
     [ObservableProperty]
     private string _fontLatin;
@@ -28,11 +29,13 @@ public sealed partial class SettingsViewModel : ObservableObject
     public IReadOnlyList<string> AvailableLatinFonts => Options(FontLatin);
     public IReadOnlyList<string> AvailableEaFonts => Options(FontEa);
 
-    public SettingsViewModel(AppSettings settings, MapTable cameras, MapTable lenses, IFontCatalog fontCatalog, string? settingsDir = null)
+    public SettingsViewModel(AppSettings settings, MapTable cameras, MapTable lenses, IFontCatalog fontCatalog,
+        UpdateViewModel update, string? settingsDir = null)
     {
         _settings = settings;
         _fontCatalog = fontCatalog;
         _settingsDir = settingsDir;
+        Update = update;
 
         CameraTable = new MapTableViewModel(cameras,
             "EXIFのカメラ型番 → 表示名\n(例: ILCE-1M2 → α1 II。スライドには「α1 II / ILCE-1M2」と出ます)");

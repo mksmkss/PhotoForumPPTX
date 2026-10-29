@@ -6,6 +6,9 @@ public static class Links
     public static string RepoUrl => $"https://github.com/{Repo}";
     public static string IssuesUrl => $"https://github.com/{Repo}/issues";
 
+    /// <summary>Windows版の特定リリース(win-vX.Y)のページ</summary>
+    public static string ReleaseTagUrl(string version) => $"https://github.com/{Repo}/releases/tag/{UpdateCheck.TagPrefix}{version}";
+
     /// <summary>バージョンとOS情報を入れた状態でIssue作成ページを開くURL</summary>
     public static string NewIssueUrl(string osDescription)
     {

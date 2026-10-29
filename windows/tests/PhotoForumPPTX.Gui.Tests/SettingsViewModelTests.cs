@@ -19,7 +19,8 @@ public class SettingsViewModelTests : IDisposable
         settings ??= new AppSettings();
         var cameras = new MapTable("cameras.json", DefaultTables.Cameras, DefaultTables.Version, storageDir: _dir);
         var lenses = new MapTable("lenses.json", DefaultTables.Lenses, DefaultTables.Version, storageDir: _dir);
-        return new SettingsViewModel(settings, cameras, lenses, fontCatalog ?? new FakeFontCatalog("Arial", "Calibri"), _dir);
+        var update = new UpdateViewModel(new FakeReleaseFeed());
+        return new SettingsViewModel(settings, cameras, lenses, fontCatalog ?? new FakeFontCatalog("Arial", "Calibri"), update, _dir);
     }
 
     [Fact]

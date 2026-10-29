@@ -8,6 +8,7 @@ namespace PhotoForumPPTX.App;
 public partial class MainWindow : Window
 {
     private readonly SettingsViewModel _settingsViewModel;
+    private readonly UpdateViewModel _updateViewModel;
     private readonly AppSettings _settings;
     private readonly IReadOnlyList<ReleaseNote> _pendingNotes;
 
@@ -26,7 +27,10 @@ public partial class MainWindow : Window
         _settings.LastSeenVersion = lastSeenToPersist;
         AppSettingsStore.Save(_settings);
 
-        _settingsViewModel = new SettingsViewModel(_settings, cameras, lenses, new WpfFontCatalog());
+        _updateViewModel = new UpdateViewModel(new GitHubReleaseFeed());
+        UpdateBanner.DataContext = _updateViewModel;
+
+        _settingsViewModel = new SettingsViewModel(_settings, cameras, lenses, new WpfFontCatalog(), _updateViewModel);
         DataContext = new MainViewModel(cameras, lenses, templatePath, new WpfDialogService(), _settings);
 
         Loaded += OnLoaded;
@@ -35,6 +39,7 @@ public partial class MainWindow : Window
     private void OnLoaded(object sender, RoutedEventArgs e)
     {
         Loaded -= OnLoaded;
+        _ = _updateViewModel.CheckAsync();
         if (_pendingNotes.Count == 0) return;
         var window = new WhatsNewWindow(_pendingNotes) { Owner = this };
         window.Closed += (_, _) => DismissPendingNotes();
@@ -62,6 +67,11 @@ public partial class MainWindow : Window
         UrlOpener.Open(Links.NewIssueUrl(Environment.OSVersion.VersionString));
 
     private void OnOpenRepoClick(object sender, RoutedEventArgs e) => UrlOpener.Open(Links.RepoUrl);
+
+    private void OnOpenReleasePageClick(object sender, RoutedEventArgs e)
+    {
+        if (_updateViewModel.Available is { } found) UrlOpener.Open(Links.ReleaseTagUrl(found.Version));
+    }
 
     private void OnDragOver(object sender, DragEventArgs e)
     {

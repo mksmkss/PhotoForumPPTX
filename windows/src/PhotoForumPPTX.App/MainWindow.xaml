@@ -11,9 +11,11 @@
         <BooleanToVisibilityConverter x:Key="BoolToVis" />
         <local:InverseBooleanToVisibilityConverter x:Key="InverseBoolToVis" />
         <local:ThumbnailConverter x:Key="ThumbnailConverter" />
+        <local:NullToVisibilityConverter x:Key="NullToVisibilityConverter" />
     </Window.Resources>
     <Grid>
         <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
             <RowDefinition Height="Auto" />
             <RowDefinition Height="*" />
             <RowDefinition Height="Auto" />
@@ -29,7 +31,19 @@
             </MenuItem>
         </Menu>
 
-        <Grid Grid.Row="1">
+        <Border x:Name="UpdateBanner" Grid.Row="1" Padding="10" Background="#DCEBFC"
+                Visibility="{Binding Available, Converter={StaticResource NullToVisibilityConverter}}">
+            <DockPanel>
+                <TextBlock DockPanel.Dock="Left" VerticalAlignment="Center"
+                           Text="{Binding Available.Version, StringFormat=新しい版 v{0} があります}" />
+                <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" HorizontalAlignment="Right">
+                    <Button Content="あとで" Command="{Binding DismissCommand}" Padding="8,4" Margin="0,0,8,0" />
+                    <Button Content="リリースページを開く" Click="OnOpenReleasePageClick" Padding="8,4" FontWeight="Bold" />
+                </StackPanel>
+            </DockPanel>
+        </Border>
+
+        <Grid Grid.Row="2">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="*" />
                 <ColumnDefinition Width="4" />
@@ -172,7 +186,7 @@
             </DockPanel>
         </Grid>
 
-        <Border Grid.Row="2" Padding="8,6" Background="#F5F5F5" BorderBrush="#DDDDDD" BorderThickness="0,1,0,0">
+        <Border Grid.Row="3" Padding="8,6" Background="#F5F5F5" BorderBrush="#DDDDDD" BorderThickness="0,1,0,0">
             <TextBlock Text="{Binding Status}" />
         </Border>
     </Grid>

@@ -161,10 +161,8 @@ final class AppModel: ObservableObject {
         let d = UserDefaults.standard
         studentID = d.string(forKey: "studentID") ?? ""
         name = d.string(forKey: "name") ?? ""
-        // 以前の初期値(MS Pゴシック)のまま保存されている人は、新しい初期値(游ゴシック)に移す
-        let savedEA = d.string(forKey: "fontEA")
         fonts = SlideFonts(latin: d.string(forKey: "fontLatin") ?? SlideFonts.default.latin,
-                           ea: savedEA == nil || savedEA == SlideFonts.template.ea ? SlideFonts.default.ea : savedEA!)
+                           ea: d.string(forKey: "fontEA") ?? SlideFonts.default.ea)
         lineSpacing = d.object(forKey: "lineSpacing") as? Double ?? 1.0
         bgHex = d.string(forKey: "bgHex") ?? SlideStyle.black.bgHex
         openAfterExport = d.object(forKey: "openAfterExport") as? Bool ?? true

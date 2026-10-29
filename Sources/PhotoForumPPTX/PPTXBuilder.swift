@@ -18,8 +18,8 @@ struct SlideFonts: Equatable {
     var ea: String
     /// テンプレートの既定
     static let template = SlideFonts(latin: "Calibri", ea: "ＭＳ Ｐゴシック")
-    /// アプリの初期値(欧文はArial、和文はテンプレートのまま)
-    static let `default` = SlideFonts(latin: "Arial", ea: template.ea)
+    /// アプリの初期値(欧文はArial、和文は游ゴシック。MS Pゴシックは Mac に入っていないため)
+    static let `default` = SlideFonts(latin: "Arial", ea: "游ゴシック")
 }
 
 /// 情報欄のデザイン。forum = 元のフォーラムのテンプレ(焦点距離を中央に大きく)、

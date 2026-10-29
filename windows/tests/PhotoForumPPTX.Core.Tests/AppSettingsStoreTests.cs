@@ -22,6 +22,14 @@ public class AppSettingsStoreTests : IDisposable
     }
 
     [Fact]
+    public void Exists_ReflectsWhetherSettingsFileWasEverSaved()
+    {
+        Assert.False(AppSettingsStore.Exists(_dir));
+        AppSettingsStore.Save(new AppSettings(), _dir);
+        Assert.True(AppSettingsStore.Exists(_dir));
+    }
+
+    [Fact]
     public void SaveThenLoad_RoundTripsAllFields()
     {
         var settings = new AppSettings

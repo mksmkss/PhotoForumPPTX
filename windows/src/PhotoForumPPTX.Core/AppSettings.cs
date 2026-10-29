@@ -10,4 +10,7 @@ public sealed class AppSettings
     public string FontEa { get; set; } = SlideFonts.Default.Ea;
     public double LineSpacing { get; set; } = 1.0;
     public bool OpenAfterExport { get; set; } = true;
+
+    /// <summary>新機能ポップアップを最後に見せた版。空なら未表示</summary>
+    public string LastSeenVersion { get; set; } = "";
 }

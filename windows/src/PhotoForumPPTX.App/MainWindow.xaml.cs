@@ -8,24 +8,60 @@ namespace PhotoForumPPTX.App;
 public partial class MainWindow : Window
 {
     private readonly SettingsViewModel _settingsViewModel;
+    private readonly AppSettings _settings;
+    private readonly IReadOnlyList<ReleaseNote> _pendingNotes;
 
     public MainWindow()
     {
         InitializeComponent();
 
-        var settings = AppSettingsStore.Load();
+        var hadExistingSettings = AppSettingsStore.Exists();
+        _settings = AppSettingsStore.Load();
         var cameras = new MapTable("cameras.json", DefaultTables.Cameras, DefaultTables.Version);
         var lenses = new MapTable("lenses.json", DefaultTables.Lenses, DefaultTables.Version);
         var templatePath = Path.Combine(AppContext.BaseDirectory, "Resources", "template.pptx");
 
-        _settingsViewModel = new SettingsViewModel(settings, cameras, lenses, new WpfFontCatalog());
-        DataContext = new MainViewModel(cameras, lenses, templatePath, new WpfDialogService(), settings);
+        var (pending, lastSeenToPersist) = WhatsNewCoordinator.Compute(_settings.LastSeenVersion, hadExistingSettings);
+        _pendingNotes = pending;
+        _settings.LastSeenVersion = lastSeenToPersist;
+        AppSettingsStore.Save(_settings);
+
+        _settingsViewModel = new SettingsViewModel(_settings, cameras, lenses, new WpfFontCatalog());
+        DataContext = new MainViewModel(cameras, lenses, templatePath, new WpfDialogService(), _settings);
+
+        Loaded += OnLoaded;
+    }
+
+    private void OnLoaded(object sender, RoutedEventArgs e)
+    {
+        Loaded -= OnLoaded;
+        if (_pendingNotes.Count == 0) return;
+        var window = new WhatsNewWindow(_pendingNotes) { Owner = this };
+        window.Closed += (_, _) => DismissPendingNotes();
+        window.ShowDialog();
+    }
+
+    private void DismissPendingNotes()
+    {
+        _settings.LastSeenVersion = AppInfo.Version;
+        AppSettingsStore.Save(_settings);
     }
 
     private void OnOpenSettingsClick(object sender, RoutedEventArgs e)
     {
         new SettingsWindow(_settingsViewModel) { Owner = this }.ShowDialog();
     }
+
+    private void OnOpenHelpClick(object sender, RoutedEventArgs e) =>
+        new HelpWindow { Owner = this }.Show();
+
+    private void OnOpenWhatsNewClick(object sender, RoutedEventArgs e) =>
+        new WhatsNewWindow(ReleaseNotes.All) { Owner = this }.Show();
+
+    private void OnReportIssueClick(object sender, RoutedEventArgs e) =>
+        UrlOpener.Open(Links.NewIssueUrl(Environment.OSVersion.VersionString));
+
+    private void OnOpenRepoClick(object sender, RoutedEventArgs e) => UrlOpener.Open(Links.RepoUrl);
 
     private void OnDragOver(object sender, DragEventArgs e)
     {

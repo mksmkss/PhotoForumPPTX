@@ -14,11 +14,22 @@
     </Window.Resources>
     <Grid>
         <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
             <RowDefinition Height="*" />
             <RowDefinition Height="Auto" />
         </Grid.RowDefinitions>
 
-        <Grid Grid.Row="0">
+        <Menu Grid.Row="0">
+            <MenuItem Header="ヘルプ(_H)">
+                <MenuItem Header="使い方(_U)" Click="OnOpenHelpClick" />
+                <MenuItem Header="新機能(更新履歴)(_W)" Click="OnOpenWhatsNewClick" />
+                <Separator />
+                <MenuItem Header="不具合・要望を報告 (GitHub Issue)…" Click="OnReportIssueClick" />
+                <MenuItem Header="GitHub リポジトリを開く" Click="OnOpenRepoClick" />
+            </MenuItem>
+        </Menu>
+
+        <Grid Grid.Row="1">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="*" />
                 <ColumnDefinition Width="4" />
@@ -161,7 +172,7 @@
             </DockPanel>
         </Grid>
 
-        <Border Grid.Row="1" Padding="8,6" Background="#F5F5F5" BorderBrush="#DDDDDD" BorderThickness="0,1,0,0">
+        <Border Grid.Row="2" Padding="8,6" Background="#F5F5F5" BorderBrush="#DDDDDD" BorderThickness="0,1,0,0">
             <TextBlock Text="{Binding Status}" />
         </Border>
     </Grid>

@@ -6,6 +6,10 @@ public static class AppSettingsStore
 {
     private const string FileName = "settings.json";
 
+    /// <summary>設定ファイルが既に存在するか(= 新規インストールか既存ユーザーかの判定に使う)</summary>
+    public static bool Exists(string? storageDir = null) =>
+        File.Exists(Path.Combine(storageDir ?? MapTable.DefaultDir, FileName));
+
     public static AppSettings Load(string? storageDir = null)
     {
         var path = Path.Combine(storageDir ?? MapTable.DefaultDir, FileName);

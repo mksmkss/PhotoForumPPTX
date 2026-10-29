@@ -26,6 +26,8 @@ struct PhotoForumApp: App {
 struct ContentView: View {
     @EnvironmentObject var model: AppModel
     @State private var targeted = false
+    @State private var gapTarget: Int?
+    @State private var slotTarget: UUID?
 
     var body: some View {
         VStack(spacing: 0) {
@@ -85,17 +87,63 @@ struct ContentView: View {
             }.padding(10)
             Divider()
             if model.photos.isEmpty {
-                Text("写真を選ぶと、EXIFを読み取って1枚1ページで並べます").foregroundStyle(.secondary)
+                Text("写真を選ぶと、EXIFを読み取って1枚1ページで並べます(写真をドラッグして2枚並べも可)").foregroundStyle(.secondary)
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
             } else {
-                List {
-                    ForEach(model.photos) { p in
-                        PhotoRow(photo: p, onRemove: { model.photos.removeAll { $0.id == p.id } })
+                ScrollView {
+                    let slides = model.slides
+                    LazyVStack(spacing: 0) {
+                        ForEach(Array(slides.enumerated()), id: \.offset) { i, group in
+                            gap(before: i)
+                            slideCard(group, number: i + 1)
+                        }
+                        gap(before: slides.count)
                     }
-                    .onMove { model.photos.move(fromOffsets: $0, toOffset: $1) }
+                    .padding(.horizontal, 10)
                 }
             }
         }
+    }
+
+    /// スライドの間。ここにドロップすると、その位置に単独スライドとして入る
+    func gap(before index: Int) -> some View {
+        Color.clear.frame(height: 14)
+            .overlay(Capsule().fill(Color.accentColor).frame(height: 3).opacity(gapTarget == index ? 1 : 0))
+            .contentShape(Rectangle())
+            .dropDestination(for: String.self) { items, _ in
+                guard let id = items.first.flatMap(UUID.init(uuidString:)) else { return false }
+                model.place(id, beforeSlide: index); return true
+            } isTargeted: { gapTarget = $0 ? index : (gapTarget == index ? nil : gapTarget) }
+    }
+
+    /// 1スライド分。写真が1枚なら右に「並べる」ためのドロップ枠を出す
+    func slideCard(_ group: [Photo], number: Int) -> some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Text("スライド \(number)").font(.caption).foregroundStyle(.secondary)
+            HStack(alignment: .top, spacing: 10) {
+                ForEach(group) { p in
+                    PhotoRow(photo: p, compact: group.count == 2, onRemove: { model.remove(p.id) })
+                        .frame(maxWidth: .infinity, alignment: .topLeading)
+                }
+                if group.count == 1, let only = group.first {
+                    pairSlot(for: only)
+                }
+            }
+        }
+        .padding(8)
+        .background(RoundedRectangle(cornerRadius: 8).fill(Color.secondary.opacity(0.08)))
+    }
+
+    func pairSlot(for target: Photo) -> some View {
+        RoundedRectangle(cornerRadius: 6)
+            .strokeBorder(style: StrokeStyle(lineWidth: 1.5, dash: [5]))
+            .foregroundStyle(slotTarget == target.id ? Color.accentColor : Color.secondary.opacity(0.5))
+            .frame(width: 96, height: 80)
+            .overlay(Text("写真をここに\nドラッグして\n左右に並べる").font(.caption2).multilineTextAlignment(.center).foregroundStyle(.secondary))
+            .dropDestination(for: String.self) { items, _ in
+                guard let id = items.first.flatMap(UUID.init(uuidString:)) else { return false }
+                model.place(id, besides: target.id); return true
+            } isTargeted: { slotTarget = $0 ? target.id : (slotTarget == target.id ? nil : slotTarget) }
     }
 
     var sidebar: some View {
@@ -124,31 +172,53 @@ struct ContentView: View {
 struct PhotoRow: View {
     @ObservedObject var photo: Photo
     @EnvironmentObject var model: AppModel
+    /// 2段組みのとき。幅が半分になるので縦に並べる
+    var compact = false
     var onRemove: () -> Void
 
     var body: some View {
-        HStack(alignment: .top, spacing: 12) {
+        let layout = compact ? AnyLayout(VStackLayout(alignment: .leading, spacing: 8)) : AnyLayout(HStackLayout(alignment: .top, spacing: 12))
+        layout {
             Group {
                 if let t = photo.thumbnail { Image(nsImage: t).resizable().scaledToFit() } else { Color.gray }
-            }.frame(width: 110, height: 80).background(Color.black)
+            }
+            .frame(width: compact ? nil : 110, height: 80).frame(maxWidth: compact ? .infinity : nil).background(Color.black)
+            .draggable(photo.id.uuidString) {
+                if let t = photo.thumbnail { Image(nsImage: t).resizable().scaledToFit().frame(width: 90, height: 66) }
+            }
+            .help("ドラッグして並べ替え・2段組み")
             VStack(alignment: .leading, spacing: 4) {
-                Text(photo.url.lastPathComponent).font(.caption).foregroundStyle(.secondary)
+                HStack {
+                    Text(photo.url.lastPathComponent).font(.caption).foregroundStyle(.secondary).lineLimit(1)
+                    Spacer()
+                    Button(role: .destructive, action: onRemove) { Image(systemName: "xmark.circle") }.buttonStyle(.borderless)
+                }
                 if model.fields.first(where: { $0.kind == .title })?.enabled == true {
                     TextField("作品タイトル", text: $photo.title)
                 }
                 if model.fields.first(where: { $0.kind == .note })?.enabled == true {
                     TextField("備考 (例: *Step Crop: 70mm equiv.)", text: $photo.note)
                 }
-                Grid(alignment: .leading, horizontalSpacing: 6, verticalSpacing: 3) {
-                    GridRow { suggestField("カメラ", $photo.camera, cameraCandidates); suggestField("レンズ", $photo.lens, lensCandidates) }
-                    GridRow {
-                        HStack { field("焦点距離(mm)", $photo.focal); field("SS", $photo.shutter) }
-                        HStack { field("F", $photo.aperture); field("ISO", $photo.iso) }
+                if compact {
+                    suggestField("カメラ", $photo.camera, cameraCandidates)
+                    SuggestField(label: "レンズ", text: $photo.lens, candidates: lensCandidates, allowsBreak: true, onCommit: { model.rememberLens($0, focal: photo.focal) })
+                    HStack { field("焦点距離(mm)", $photo.focal); field("SS", $photo.shutter) }
+                    HStack { field("F", $photo.aperture); field("ISO", $photo.iso) }
+                } else {
+                    Grid(alignment: .leading, horizontalSpacing: 6, verticalSpacing: 3) {
+                        GridRow { suggestField("カメラ", $photo.camera, cameraCandidates); SuggestField(label: "レンズ", text: $photo.lens, candidates: lensCandidates, allowsBreak: true, onCommit: { model.rememberLens($0, focal: photo.focal) }) }
+                        GridRow {
+                            HStack { field("焦点距離(mm)", $photo.focal); field("SS", $photo.shutter) }
+                            HStack { field("F", $photo.aperture); field("ISO", $photo.iso) }
+                        }
                     }
                 }
             }
-            Button(role: .destructive, action: onRemove) { Image(systemName: "xmark.circle") }.buttonStyle(.borderless)
         }.padding(.vertical, 4)
+        // 覚えているレンズを選んだら、焦点距離が空のときだけ自動で入れる
+        .onChange(of: photo.lens) { l in
+            if photo.focal.isEmpty, let f = model.lensFocal[l.trimmingCharacters(in: .whitespacesAndNewlines)] { photo.focal = f }
+        }
     }
 
     /// 対応表の表示名(カメラは「表示名 / 型番」)
@@ -161,7 +231,7 @@ struct PhotoRow: View {
     /// 対応表の表示名 + 今読み込んでいる写真のEXIFレンズ名(重複除く)
     var lensCandidates: [String] {
         var out: [String] = []
-        for c in model.lenses.entries.map(\.value) + model.photos.map(\.lens) where !c.isEmpty && !out.contains(c) { out.append(c) }
+        for c in model.lenses.entries.map(\.value) + model.rememberedLenses + model.photos.map(\.lens) where !c.isEmpty && !out.contains(c) { out.append(c) }
         return out
     }
 
@@ -186,10 +256,12 @@ struct SettingsView: View {
                         keyLabel: "EXIFのレンズ名", valueLabel: "表示名", table: model.lenses)
                 .tabItem { Label("レンズ名", systemImage: "camera.aperture") }
             FontSettings().tabItem { Label("フォント", systemImage: "textformat") }
+            LayoutSettings().tabItem { Label("レイアウト", systemImage: "rectangle.split.2x1") }
+            BackgroundSettings().tabItem { Label("背景", systemImage: "paintpalette") }
             SpacingSettings().tabItem { Label("行間", systemImage: "text.alignleft") }
             AboutSettings().tabItem { Label("情報", systemImage: "info.circle") }
         }
-        .frame(width: 560, height: 460).padding()
+        .frame(width: 620, height: 520).padding()
     }
 }
 
@@ -229,7 +301,12 @@ struct SuggestField: View {
     let label: String
     @Binding var text: String
     let candidates: [String]
+    /// レンズ名など、改行(2段表示)を入れられる欄
+    var allowsBreak = false
+    /// 入力が終わった(フォーカスが外れた)とき
+    var onCommit: (String) -> Void = { _ in }
     @FocusState private var focused: Bool
+    @State private var editing = false
     @State private var open = false
 
     private var matches: [String] {
@@ -240,14 +317,24 @@ struct SuggestField: View {
 
     var body: some View {
         HStack(spacing: 2) {
-            TextField(label, text: $text)
-                .textFieldStyle(.roundedBorder).font(.caption)
-                .focused($focused)
+            if allowsBreak {
+                // Return でカーソル位置に改行を入れられる欄(SwiftUIのTextFieldでは不可)
+                BreakableTextField(placeholder: label, text: $text, editing: $editing)
+            } else {
+                TextField(label, text: $text)
+                    .textFieldStyle(.roundedBorder).font(.caption)
+                    .focused($focused)
+                    .onChange(of: focused) { editing = $0 }
+            }
             Menu {
                 if candidates.isEmpty { Text("候補なし") }
                 ForEach(candidates, id: \.self) { c in Button(c) { text = c } }
             } label: { Image(systemName: "chevron.down.circle") }
                 .menuStyle(.borderlessButton).menuIndicator(.hidden).fixedSize()
+            if allowsBreak {
+                Button { text = text.contains("\n") ? text.replacingOccurrences(of: "\n", with: " ") : text + "\n" } label: { Image(systemName: "return") }
+                    .buttonStyle(.borderless).help("2段にする(1行目は左寄せ・2行目は右寄せ)/ 解除")
+            }
         }
         // 候補はポップオーバーで欄の下に出す(レイアウトに影響せず、Listの行にも切られない)
         .popover(isPresented: Binding(get: { open && !matches.isEmpty }, set: { open = $0 }),
@@ -262,13 +349,67 @@ struct SuggestField: View {
             }
             .frame(minWidth: 220).padding(4)
         }
-        .onChange(of: focused) { f in
+        .onChange(of: editing) { f in
             if f { open = true } else {
+                onCommit(text)
                 // クリックで候補を選べるよう、フォーカスが外れてから少し待って閉じる
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) { if !focused { open = false } }
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) { if !editing { open = false } }
             }
         }
-        .onChange(of: text) { _ in if focused { open = true } }
+        .onChange(of: text) { _ in if editing { open = true } }
+    }
+}
+
+/// 複数行(折り返しあり)の1行風テキスト欄。Return でカーソル位置に改行を入れ、フォーカスの出入りを通知する
+struct BreakableTextField: NSViewRepresentable {
+    let placeholder: String
+    @Binding var text: String
+    @Binding var editing: Bool
+
+    func makeNSView(context: Context) -> NSTextField {
+        let f = NSTextField()
+        f.placeholderString = placeholder
+        f.font = .systemFont(ofSize: NSFont.smallSystemFontSize)
+        f.bezelStyle = .roundedBezel
+        f.usesSingleLineMode = false
+        f.cell?.wraps = true
+        f.cell?.isScrollable = false
+        f.lineBreakMode = .byWordWrapping
+        f.delegate = context.coordinator
+        f.setContentHuggingPriority(.defaultLow, for: .horizontal)
+        return f
+    }
+
+    func updateNSView(_ f: NSTextField, context: Context) {
+        context.coordinator.parent = self
+        if f.stringValue != text { f.stringValue = text }
+    }
+
+    func sizeThatFits(_ proposal: ProposedViewSize, nsView f: NSTextField, context: Context) -> CGSize? {
+        let w = proposal.width ?? 200
+        let h = f.cell?.cellSize(forBounds: NSRect(x: 0, y: 0, width: w, height: .greatestFiniteMagnitude)).height ?? 22
+        return CGSize(width: w, height: max(h, 22))
+    }
+
+    func makeCoordinator() -> Coordinator { Coordinator(self) }
+
+    final class Coordinator: NSObject, NSTextFieldDelegate {
+        var parent: BreakableTextField
+        var isEditing = false
+        init(_ p: BreakableTextField) { parent = p }
+
+        func controlTextDidBeginEditing(_ n: Notification) { isEditing = true; parent.editing = true }
+        func controlTextDidEndEditing(_ n: Notification) { isEditing = false; parent.editing = false }
+        func controlTextDidChange(_ n: Notification) {
+            if let f = n.object as? NSTextField { parent.text = f.stringValue }
+        }
+        func control(_ control: NSControl, textView: NSTextView, doCommandBy sel: Selector) -> Bool {
+            if sel == #selector(NSResponder.insertNewline(_:)) {
+                textView.insertNewlineIgnoringFieldEditor(nil)
+                return true
+            }
+            return false
+        }
     }
 }
 
@@ -304,6 +445,44 @@ struct FontSettings: View {
     }
 }
 
+/// スライドの背景色。文字色は背景の明るさから自動で白/黒になる
+struct BackgroundSettings: View {
+    @EnvironmentObject var model: AppModel
+
+    private var color: Binding<Color> {
+        Binding(
+            get: { Color(hex: model.bgHex) },
+            set: { model.bgHex = $0.hex }
+        )
+    }
+
+    var body: some View {
+        Form {
+            HStack {
+                Button("黒") { model.bgHex = SlideStyle.black.bgHex }
+                Button("ライトグレー") { model.bgHex = SlideStyle.lightGray.bgHex }
+                ColorPicker("カスタム", selection: color, supportsOpacity: false)
+                Spacer()
+                Text("#\(model.bgHex)").monospaced().foregroundStyle(.secondary)
+            }
+            // プレビュー(実際のスライドの文字色)
+            VStack(spacing: 4) {
+                Text("5226C019").font(.system(size: 17))
+                Text("α1 II / ILCE-1M2").font(.system(size: 13))
+                Text("Shutter Speed: 1/800 sec").font(.system(size: 12))
+            }
+            .foregroundStyle(Color(hex: model.style.textHex))
+            .frame(maxWidth: .infinity, minHeight: 130)
+            .background(Color(hex: model.bgHex))
+            .overlay(Rectangle().stroke(Color.secondary.opacity(0.4)))
+            Text("カラーパネルの「スライダー」タブでRGB・CMYKの数値を指定でき、「カラーパレット」などから選ぶこともできます。文字色は背景が明るいと黒、暗いと白に自動で切り替わります。")
+                .font(.caption).foregroundStyle(.secondary)
+        }
+        .padding()
+        .frame(maxHeight: .infinity, alignment: .top)
+    }
+}
+
 struct GeneralSettings: View {
     @EnvironmentObject var model: AppModel
     var body: some View {
@@ -317,32 +496,53 @@ struct GeneralSettings: View {
     }
 }
 
-/// 撮影情報ボックス(Shutter Speed / Aperture / ISO)の行間。デモテキストで見ながら調整する
+extension Color {
+    init(hex: String) {
+        let v = Int(hex, radix: 16) ?? 0
+        self.init(.sRGB, red: Double((v >> 16) & 255) / 255, green: Double((v >> 8) & 255) / 255, blue: Double(v & 255) / 255)
+    }
+    /// sRGBに変換したRRGGBB
+    var hex: String {
+        let c = NSColor(self).usingColorSpace(.sRGB) ?? .black
+        return String(format: "%02X%02X%02X", Int((c.redComponent * 255).rounded()), Int((c.greenComponent * 255).rounded()), Int((c.blueComponent * 255).rounded()))
+    }
+}
+
+/// 撮影情報ボックス(Shutter Speed / Aperture / ISO)の行間と、赤線との間隔。デモテキストで見ながら調整する
 struct SpacingSettings: View {
     @EnvironmentObject var model: AppModel
-    private let demo: [(String, Double)] = [
-        ("Shutter Speed: 1/800 sec", 7.5), ("Aperture: f/2.8", 7.5), ("ISO: 400", 7.5), ("Step Crop", 7.5),
-    ]
+    private let demo = ["Shutter Speed: 1/800 sec", "Aperture: f/2.8", "ISO: 400", "Step Crop"]
+    private let scale = 1.6          // スライド上の7.5ptを画面で見やすく拡大
 
     var body: some View {
         Form {
             HStack {
+                Text("行間").frame(width: 80, alignment: .leading)
                 Slider(value: $model.lineSpacing, in: 0.8...2.0, step: 0.05)
                 Text("\(Int((model.lineSpacing * 100).rounded()))%").monospacedDigit().frame(width: 48, alignment: .trailing)
             }
-            // スライドの撮影情報ボックスと同じ見た目(黒背景・白文字・左寄せ)。1pt=1.6倍に拡大して表示
+            HStack {
+                Text("赤線との間隔").frame(width: 80, alignment: .leading)
+                Slider(value: $model.lineGap, in: -4...12, step: 0.5)
+                Text(String(format: "%+.1fpt", model.lineGap)).monospacedDigit().frame(width: 48, alignment: .trailing)
+            }
+            // スライドの撮影情報ボックスと同じ見た目(背景色・文字色は設定どおり、左寄せ)
             VStack(alignment: .leading, spacing: 0) {
-                ForEach(demo, id: \.0) { t, size in
-                    Text(t).font(.custom(model.fonts.latin, size: size * 1.6))
-                        .frame(minHeight: size * 1.6 * 1.2 * model.lineSpacing, alignment: .leading)
+                Rectangle().fill(Color(red: 1, green: 0.4, blue: 0)).frame(height: 1.5)
+                Color.clear.frame(height: max(0, (4.9 + model.lineGap) * scale))
+                ForEach(demo, id: \.self) { t in
+                    Text(t).font(.custom(model.fonts.latin, size: 7.5 * scale))
+                        .frame(minHeight: 7.5 * scale * 1.2 * model.lineSpacing, alignment: .leading)
                 }
             }
-            .foregroundStyle(.white).padding(8).frame(width: 220, alignment: .leading).background(.black)
+            .foregroundStyle(Color(hex: model.style.textHex)).padding(.horizontal, 12).padding(.vertical, 10)
+            .frame(width: 240, alignment: .leading).background(Color(hex: model.bgHex))
+            .overlay(Rectangle().stroke(Color.secondary.opacity(0.4)))
             HStack {
-                Button("100%に戻す") { model.lineSpacing = 1.0 }
+                Button("標準に戻す") { model.lineSpacing = 1.0; model.lineGap = 0 }
                 Spacer()
             }
-            Text("線の下の撮影情報(Shutter Speed / Aperture / ISO / 備考)を1つのテキストボックスにまとめ、その中の行間を指定します。")
+            Text("線の下の撮影情報(Shutter Speed / Aperture / ISO / 備考)は1つのテキストボックスにまとまっています。その中の行間と、赤線との間隔を指定します。")
                 .font(.caption).foregroundStyle(.secondary)
         }
         .padding()

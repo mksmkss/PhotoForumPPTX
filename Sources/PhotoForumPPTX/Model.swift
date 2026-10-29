@@ -56,6 +56,8 @@ final class Photo: ObservableObject, Identifiable {
     let pixelSize: CGSize      // 向き補正後
     let orientation: Int
 
+    /// 次の写真と同じスライドに2段組みで並べる
+    @Published var pairWithNext = false
     @Published var title = ""
     @Published var camera = ""
     @Published var lens = ""
@@ -135,8 +137,19 @@ final class AppModel: ObservableObject {
     @Published var fonts: SlideFonts { didSet { saveFonts() } }
     /// 撮影情報ボックスの行間(1.0 = 100%)
     @Published var lineSpacing: Double { didSet { UserDefaults.standard.set(lineSpacing, forKey: "lineSpacing") } }
+    /// スライドの背景色(RRGGBB)。文字色は明るさから自動で決まる
+    @Published var bgHex: String { didSet { UserDefaults.standard.set(bgHex, forKey: "bgHex") } }
+    var style: SlideStyle { SlideStyle(bgHex: bgHex) }
     /// 書き出し後にpptxを開く(オフならFinderで表示)
     @Published var openAfterExport: Bool { didSet { UserDefaults.standard.set(openAfterExport, forKey: "openAfterExport") } }
+    /// 情報欄のデザイン
+    @Published var layout: SlideLayout { didSet { UserDefaults.standard.set(layout.rawValue, forKey: "layout") } }
+    /// 手入力したレンズ名(マニュアルレンズなど)。一度入れたら候補に出す
+    @Published var rememberedLenses: [String] = UserDefaults.standard.stringArray(forKey: "rememberedLenses") ?? []
+    /// 手入力したレンズの焦点距離(オールドレンズ用)。レンズ名を選ぶと自動で入る
+    @Published var lensFocal: [String: String] = UserDefaults.standard.dictionary(forKey: "lensFocal") as? [String: String] ?? [:]
+    /// 赤線と撮影情報(SS・F値など)の間隔の調整(pt。0が標準、+で広がる)
+    @Published var lineGap: Double { didSet { UserDefaults.standard.set(lineGap, forKey: "lineGap") } }
     @Published var updating = false
     @Published var pendingNotes: [ReleaseNote] = []
 
@@ -157,7 +170,10 @@ final class AppModel: ObservableObject {
         fonts = SlideFonts(latin: d.string(forKey: "fontLatin") ?? SlideFonts.default.latin,
                            ea: d.string(forKey: "fontEA") ?? SlideFonts.default.ea)
         lineSpacing = d.object(forKey: "lineSpacing") as? Double ?? 1.0
+        bgHex = d.string(forKey: "bgHex") ?? SlideStyle.black.bgHex
         openAfterExport = d.object(forKey: "openAfterExport") as? Bool ?? true
+        layout = SlideLayout(rawValue: d.string(forKey: "layout") ?? "") ?? .forum
+        lineGap = d.object(forKey: "lineGap") as? Double ?? 0
         let defaultFields: [FieldSetting] = [
             .init(kind: .camera, enabled: true), .init(kind: .lens, enabled: true),
             .init(kind: .focal, enabled: true), .init(kind: .shutter, enabled: true),
@@ -198,6 +214,59 @@ final class AppModel: ObservableObject {
         if let data = try? JSONEncoder().encode(fields) { d.set(data, forKey: "fields") }
     }
 
+    /// レンズ名を覚える(新しい順・重複なし・最大50件)。対応表にある名前は覚えない
+    func rememberLens(_ name: String, focal: String = "") {
+        let t = name.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !t.isEmpty, !lenses.entries.contains(where: { $0.value == t }) else { return }
+        let f = focal.trimmingCharacters(in: .whitespaces)
+        if !f.isEmpty { lensFocal[t] = f; UserDefaults.standard.set(lensFocal, forKey: "lensFocal") }
+        rememberedLenses.removeAll { $0 == t }
+        rememberedLenses.insert(t, at: 0)
+        if rememberedLenses.count > 50 { rememberedLenses.removeLast() }
+        UserDefaults.standard.set(rememberedLenses, forKey: "rememberedLenses")
+    }
+
+    func remove(_ id: UUID) { _ = detach(id) }
+
+    /// スライド単位の並び(2段組みは2枚で1スライド)
+    var slides: [[Photo]] { PPTXBuilder.slideGroups(photos) }
+
+    /// 右側の相方になっている写真の pairWithNext を落とし、左右の組が崩れないようにする
+    private func normalizePairs() {
+        var i = 0
+        while i < photos.count {
+            if photos[i].pairWithNext, i + 1 < photos.count { photos[i + 1].pairWithNext = false; i += 2 }
+            else { photos[i].pairWithNext = false; i += 1 }
+        }
+    }
+
+    /// 写真を取り出す(組の片方なら、残った方は単独スライドに戻る)
+    private func detach(_ id: UUID) -> Photo? {
+        guard let i = photos.firstIndex(where: { $0.id == id }) else { return nil }
+        let p = photos.remove(at: i)
+        if i > 0, photos[i - 1].pairWithNext, p.pairWithNext == false { photos[i - 1].pairWithNext = false }
+        p.pairWithNext = false
+        normalizePairs()
+        return p
+    }
+
+    /// ドラッグした写真を、target と同じスライドの右側に並べる(target が単独スライドのときだけ)
+    func place(_ id: UUID, besides target: UUID) {
+        guard id != target, let p = detach(id), let t = photos.firstIndex(where: { $0.id == target }) else { return }
+        photos.insert(p, at: t + 1)
+        photos[t].pairWithNext = true
+        normalizePairs()
+    }
+
+    /// ドラッグした写真を、slideIndex 番目のスライドの手前(末尾なら最後)に単独スライドとして置く
+    func place(_ id: UUID, beforeSlide slideIndex: Int) {
+        guard let p = detach(id) else { return }
+        let groups = slides
+        let at = groups.prefix(max(0, slideIndex)).reduce(0) { $0 + $1.count }
+        photos.insert(p, at: min(at, photos.count))
+        normalizePairs()
+    }
+
     func add(urls: [URL]) {
         for u in urls {
             if let p = Photo(url: u, cameras: cameras, lenses: lenses) { photos.append(p) }
@@ -223,7 +292,8 @@ final class AppModel: ObservableObject {
             let template = Bundle.main.url(forResource: "template", withExtension: "pptx")
                 ?? URL(fileURLWithPath: FileManager.default.currentDirectoryPath + "/Resources/template.pptx")
             try PPTXBuilder.build(template: template, output: out, photos: photos, fields: fields,
-                                  studentID: studentID, name: name, fonts: fonts, lineSpacing: lineSpacing)
+                                  studentID: studentID, name: name, fonts: fonts, lineSpacing: lineSpacing, style: style, layout: layout, lineGap: lineGap)
+            photos.forEach { rememberLens($0.lens, focal: $0.focal) }
             status = "書き出しました: \(out.lastPathComponent)"
             if openAfterExport { NSWorkspace.shared.open(out) } else { NSWorkspace.shared.activateFileViewerSelecting([out]) }
         } catch {

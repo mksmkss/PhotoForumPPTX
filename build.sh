@@ -1,7 +1,7 @@
 #!/bin/sh
 # PhotoForumPPTX.app を作って配布用zipにまとめる (Xcode不要、Command Line Toolsだけで可)
 set -e
-VERSION=${VERSION:-1.6}   # リリース時: VERSION=1.2 ./build.sh
+VERSION=${VERSION:-2.0}   # リリース時: VERSION=1.2 ./build.sh
 cd "$(dirname "$0")"
 mkdir -p .build
 for a in arm64 x86_64; do

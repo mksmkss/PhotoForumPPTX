@@ -44,7 +44,7 @@ struct Panel {
     var lowerX: Int { narrow ? colX : colX + 184224 }
     var lowerW: Int { narrow ? colW : 1326277 }
     var lineX: Int { narrow ? colX + 36000 : 7817723 }
-    var lineW: Int { narrow ? colW - 72000 : 1215730 }
+    var lineW: Int { narrow ? colW - 110000 : 1215730 }
     /// 撮影情報ボックスの左右余白(狭い列では詰めて「Shutter Speed: 1/800 sec」を1行に収める)
     var lowerInsets: (l: Int, r: Int) { narrow ? (36000, 0) : (91440, 91440) }
 

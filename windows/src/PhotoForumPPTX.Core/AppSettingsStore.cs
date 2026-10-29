@@ -21,10 +21,16 @@ public static class AppSettingsStore
         return new AppSettings();
     }
 
+    /// <summary>ディスク容量不足や権限エラーなどで保存に失敗しても、アプリ本体は落とさない</summary>
     public static void Save(AppSettings settings, string? storageDir = null)
     {
         var dir = storageDir ?? MapTable.DefaultDir;
-        Directory.CreateDirectory(dir);
-        File.WriteAllText(Path.Combine(dir, FileName), JsonSerializer.Serialize(settings));
+        try
+        {
+            Directory.CreateDirectory(dir);
+            AtomicFile.Write(Path.Combine(dir, FileName), JsonSerializer.Serialize(settings));
+        }
+        catch (IOException) { }
+        catch (UnauthorizedAccessException) { }
     }
 }

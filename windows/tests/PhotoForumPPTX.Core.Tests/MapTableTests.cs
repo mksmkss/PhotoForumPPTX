@@ -40,4 +40,15 @@ public class MapTableTests : IDisposable
         var reopened = new MapTable("lenses.json", new[] { new MapEntry("A", "1"), new MapEntry("B", "2") }, version: 1, storageDir: _dir);
         Assert.Null(reopened.Lookup("B"));
     }
+
+    [Fact]
+    public void Save_DoesNotLeaveTemporaryFileBehind()
+    {
+        var table = new MapTable("cameras.json", new[] { new MapEntry("A", "1") }, version: 1, storageDir: _dir);
+        table.Save();
+
+        var files = Directory.GetFiles(_dir);
+        Assert.Contains(files, f => f.EndsWith("cameras.json"));
+        Assert.DoesNotContain(files, f => f.EndsWith(".tmp"));
+    }
 }

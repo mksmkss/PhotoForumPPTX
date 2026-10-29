@@ -43,9 +43,12 @@ public sealed class MapTable
     public static string DefaultDir =>
         Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "PhotoForumPPTX");
 
+    /// <summary>ディスク容量不足や権限エラーなどで保存に失敗しても、アプリ本体は落とさない</summary>
     public void Save()
     {
-        File.WriteAllText(_path, JsonSerializer.Serialize(Entries));
+        try { AtomicFile.Write(_path, JsonSerializer.Serialize(Entries)); }
+        catch (IOException) { }
+        catch (UnauthorizedAccessException) { }
     }
 
     /// <summary>設定画面での編集結果を丸ごと差し替えて保存する</summary>

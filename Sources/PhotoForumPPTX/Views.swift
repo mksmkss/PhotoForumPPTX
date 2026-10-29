@@ -201,12 +201,12 @@ struct PhotoRow: View {
                 }
                 if compact {
                     suggestField("カメラ", $photo.camera, cameraCandidates)
-                    suggestField("レンズ", $photo.lens, lensCandidates)
+                    SuggestField(label: "レンズ", text: $photo.lens, candidates: lensCandidates, allowsBreak: true)
                     HStack { field("焦点距離(mm)", $photo.focal); field("SS", $photo.shutter) }
                     HStack { field("F", $photo.aperture); field("ISO", $photo.iso) }
                 } else {
                     Grid(alignment: .leading, horizontalSpacing: 6, verticalSpacing: 3) {
-                        GridRow { suggestField("カメラ", $photo.camera, cameraCandidates); suggestField("レンズ", $photo.lens, lensCandidates) }
+                        GridRow { suggestField("カメラ", $photo.camera, cameraCandidates); SuggestField(label: "レンズ", text: $photo.lens, candidates: lensCandidates, allowsBreak: true) }
                         GridRow {
                             HStack { field("焦点距離(mm)", $photo.focal); field("SS", $photo.shutter) }
                             HStack { field("F", $photo.aperture); field("ISO", $photo.iso) }
@@ -297,6 +297,8 @@ struct SuggestField: View {
     let label: String
     @Binding var text: String
     let candidates: [String]
+    /// レンズ名など、改行(2段表示)を入れられる欄
+    var allowsBreak = false
     @FocusState private var focused: Bool
     @State private var open = false
 
@@ -317,6 +319,10 @@ struct SuggestField: View {
                 ForEach(candidates, id: \.self) { c in Button(c) { text = c } }
             } label: { Image(systemName: "chevron.down.circle") }
                 .menuStyle(.borderlessButton).menuIndicator(.hidden).fixedSize()
+            if allowsBreak {
+                Button { text = text.contains("\n") ? text.replacingOccurrences(of: "\n", with: " ") : text + "\n" } label: { Image(systemName: "return") }
+                    .buttonStyle(.borderless).help("2段にする(1行目は左寄せ・2行目は右寄せ)/ 解除")
+            }
         }
         // 候補はポップオーバーで欄の下に出す(レイアウトに影響せず、Listの行にも切られない)
         .popover(isPresented: Binding(get: { open && !matches.isEmpty }, set: { open = $0 }),

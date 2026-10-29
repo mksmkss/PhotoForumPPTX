@@ -260,7 +260,10 @@ enum PPTXBuilder {
         }
 
         let lineY = 4507663
-        let lensLines = (text(.lens) ?? "").split(separator: "\n", omittingEmptySubsequences: true).map(String.init)
+        var lensLines = (text(.lens) ?? "").split(separator: "\n", omittingEmptySubsequences: true).map(String.init)
+        if lensLines.count == 1, estimateLines(lensLines[0], size: layout.fontSize(.lens), width: panel.camW) > 1 {
+            lensLines = balancedSplit(lensLines[0], size: layout.fontSize(.lens))   // 改行がなくても、長ければ2段に分けて左寄せ/右寄せにする
+        }
         let camera = text(.camera)
         let list: [(FieldKind, String)] = [FieldKind.shutter, .focal, .aperture, .iso, .note].compactMap { k in text(k).map { (k, $0) } }
         if !lensLines.isEmpty || camera != nil || !list.isEmpty {
@@ -316,7 +319,7 @@ enum PPTXBuilder {
         let paras = items.map { k, t -> String in
             let sz = Int(layout.fontSize(k) * 100)
             let ppr = "<a:pPr algn=\"l\"\(k == .note ? " marL=\"54000\"" : "")><a:lnSpc><a:spcPct val=\"\(Int((spacing * 100000).rounded()))\"/></a:lnSpc></a:pPr>"
-            return "<a:p>\(ppr)<a:r><a:rPr lang=\"ja-JP\" altLang=\"en-US\" sz=\"\(sz)\" dirty=\"0\"><a:solidFill><a:srgbClr val=\"\(color)\"/></a:solidFill><a:latin typeface=\"\(esc(fonts.latin))\"/><a:ea typeface=\"\(esc(fonts.ea))\"/></a:rPr><a:t>\(esc(t))</a:t></a:r></a:p>"
+            return "<a:p>\(ppr)<a:r><a:rPr \(langAttrs(t)) sz=\"\(sz)\" dirty=\"0\"><a:solidFill><a:srgbClr val=\"\(color)\"/></a:solidFill><a:latin typeface=\"\(esc(fonts.latin))\"/><a:ea typeface=\"\(esc(fonts.ea))\"/></a:rPr><a:t>\(esc(t))</a:t></a:r></a:p>"
         }.joined()
         return """
         <p:sp><p:nvSpPr><p:cNvPr id="\(id)" name="撮影情報"/><p:cNvSpPr txBox="1"/><p:nvPr/></p:nvSpPr><p:spPr><a:xfrm><a:off x="\(x)" y="\(y)"/><a:ext cx="\(w)" cy="\(h)"/></a:xfrm><a:prstGeom prst="rect"><a:avLst/></a:prstGeom><a:noFill/></p:spPr><p:txBody><a:bodyPr wrap="square" lIns="\(insets.l)" rIns="\(insets.r)" rtlCol="0"><a:spAutoFit/></a:bodyPr><a:lstStyle/>\(paras)</p:txBody></p:sp>
@@ -334,6 +337,23 @@ enum PPTXBuilder {
         return Int(lines)
     }
 
+    /// 日本語を含まない文字列は en-US にする(ja-JP のままだと、英数字にも和文フォントが当たることがある)
+    static func langAttrs(_ s: String) -> String {
+        s.unicodeScalars.contains { $0.value > 0x2E7F } ? "lang=\"ja-JP\" altLang=\"en-US\"" : "lang=\"en-US\" altLang=\"ja-JP\""
+    }
+
+    /// 1行に収まらないレンズ名を、2行の幅がなるべく揃うように単語の切れ目で2つに分ける
+    static func balancedSplit(_ s: String, size: Double) -> [String] {
+        let words = s.split(separator: " ").map(String.init)
+        guard words.count >= 2 else { return [s] }
+        func width(_ t: String) -> Double { t.unicodeScalars.reduce(0) { $0 + ($1.value < 0x2000 ? size * 0.52 : size) } }
+        let best = (1..<words.count).min { a, b in
+            func cost(_ i: Int) -> Double { max(width(words[..<i].joined(separator: " ")), width(words[i...].joined(separator: " "))) }
+            return cost(a) < cost(b)
+        }!
+        return [words[..<best].joined(separator: " "), words[best...].joined(separator: " ")]
+    }
+
     static func esc(_ s: String) -> String {
         s.replacingOccurrences(of: "&", with: "&amp;").replacingOccurrences(of: "<", with: "&lt;").replacingOccurrences(of: ">", with: "&gt;")
     }
@@ -341,7 +361,7 @@ enum PPTXBuilder {
     static func textShape(id: Int, y: Int, h: Int, text: String, size: Double, x: Int, w: Int, fonts: SlideFonts = .default, color: String = "FFFFFF") -> String {
         let sz = Int(size * 100)
         return """
-        <p:sp><p:nvSpPr><p:cNvPr id="\(id)" name="テキスト \(id)"/><p:cNvSpPr txBox="1"/><p:nvPr/></p:nvSpPr><p:spPr><a:xfrm><a:off x="\(x)" y="\(y)"/><a:ext cx="\(w)" cy="\(h)"/></a:xfrm><a:prstGeom prst="rect"><a:avLst/></a:prstGeom><a:noFill/></p:spPr><p:txBody><a:bodyPr wrap="square" rtlCol="0"><a:spAutoFit/></a:bodyPr><a:lstStyle/><a:p><a:pPr algn="ctr"/><a:r><a:rPr lang="ja-JP" altLang="en-US" sz="\(sz)" dirty="0"><a:solidFill><a:srgbClr val="\(color)"/></a:solidFill><a:latin typeface="\(esc(fonts.latin))"/><a:ea typeface="\(esc(fonts.ea))"/></a:rPr><a:t>\(esc(text))</a:t></a:r></a:p></p:txBody></p:sp>
+        <p:sp><p:nvSpPr><p:cNvPr id="\(id)" name="テキスト \(id)"/><p:cNvSpPr txBox="1"/><p:nvPr/></p:nvSpPr><p:spPr><a:xfrm><a:off x="\(x)" y="\(y)"/><a:ext cx="\(w)" cy="\(h)"/></a:xfrm><a:prstGeom prst="rect"><a:avLst/></a:prstGeom><a:noFill/></p:spPr><p:txBody><a:bodyPr wrap="square" rtlCol="0"><a:spAutoFit/></a:bodyPr><a:lstStyle/><a:p><a:pPr algn="ctr"/><a:r><a:rPr \(langAttrs(text)) sz="\(sz)" dirty="0"><a:solidFill><a:srgbClr val="\(color)"/></a:solidFill><a:latin typeface="\(esc(fonts.latin))"/><a:ea typeface="\(esc(fonts.ea))"/></a:rPr><a:t>\(esc(text))</a:t></a:r></a:p></p:txBody></p:sp>
         """
     }
 
@@ -350,7 +370,7 @@ enum PPTXBuilder {
         let sz = Int(SlideLayout.compact.fontSize(.lens) * 100)
         let paras = lines.enumerated().map { i, t -> String in
             let algn = lines.count == 1 ? "ctr" : (i == lines.count - 1 ? "r" : "l")
-            return "<a:p><a:pPr algn=\"\(algn)\"/><a:r><a:rPr lang=\"ja-JP\" altLang=\"en-US\" sz=\"\(sz)\" dirty=\"0\"><a:solidFill><a:srgbClr val=\"\(color)\"/></a:solidFill><a:latin typeface=\"\(esc(fonts.latin))\"/><a:ea typeface=\"\(esc(fonts.ea))\"/></a:rPr><a:t>\(esc(t))</a:t></a:r></a:p>"
+            return "<a:p><a:pPr algn=\"\(algn)\"/><a:r><a:rPr \(langAttrs(t)) sz=\"\(sz)\" dirty=\"0\"><a:solidFill><a:srgbClr val=\"\(color)\"/></a:solidFill><a:latin typeface=\"\(esc(fonts.latin))\"/><a:ea typeface=\"\(esc(fonts.ea))\"/></a:rPr><a:t>\(esc(t))</a:t></a:r></a:p>"
         }.joined()
         return """
         <p:sp><p:nvSpPr><p:cNvPr id="\(id)" name="レンズ名"/><p:cNvSpPr txBox="1"/><p:nvPr/></p:nvSpPr><p:spPr><a:xfrm><a:off x="\(x)" y="\(y)"/><a:ext cx="\(w)" cy="\(h)"/></a:xfrm><a:prstGeom prst="rect"><a:avLst/></a:prstGeom><a:noFill/></p:spPr><p:txBody><a:bodyPr wrap="square" rtlCol="0"><a:spAutoFit/></a:bodyPr><a:lstStyle/>\(paras)</p:txBody></p:sp>

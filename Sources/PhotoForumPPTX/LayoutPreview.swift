@@ -73,8 +73,8 @@ struct LayoutSettings: View {
             .frame(maxWidth: 480)
             .overlay(Rectangle().stroke(Color.secondary.opacity(0.4)))
             Text(model.layout == .forum
-                 ? "フォーラム標準: 焦点距離を右の列の中央に大きく表示します。2段組みの写真は、どちらを選んでもコンパクトで出力されます。"
-                 : "コンパクト: カメラ名を大きく、レンズ名と露出情報(焦点距離を含む)を小さくまとめます。")
+                 ? "フォーラム標準: 焦点距離を右の列の中央に大きく表示します。"
+                 : "コンパクト: カメラ名を大きく、レンズ名と露出情報(焦点距離を含む)を小さくまとめます。レンズ名に改行を入れると、1行目は左寄せ・2行目は右寄せになります。")
                 .font(.caption).foregroundStyle(.secondary)
         }
         .padding()

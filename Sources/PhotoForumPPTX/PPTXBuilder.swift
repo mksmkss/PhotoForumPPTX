@@ -63,21 +63,25 @@ struct Panel {
     var photoX: Int, photoMaxW: Int
     var colX: Int, colW: Int
     var narrow: Bool
-    var lowerX: Int { narrow ? colX : colX + 184224 }
-    var lowerW: Int { narrow ? colW : 1326277 }
-    var lineX: Int { narrow ? colX + 36000 : 7817723 }
-    var lineW: Int { narrow ? colW - 110000 : 1215730 }
+    // 狭い列はテンプレートの寸法に合わせる: 文字は列の左端+7.2pt(既定の余白)から、赤線は列の左端+83219、幅933061
+    var lowerX: Int { narrow ? colX + 55440 : colX + 184224 }
+    var lowerW: Int { narrow ? colW - 55440 : 1326277 }
+    var lineX: Int { narrow ? colX + 83219 : 7817723 }
+    var lineW: Int { narrow ? 933061 : 1215730 }
+    /// カメラ名・レンズ名のボックス(コンパクト用。赤線の中央に揃う)
+    var camX: Int { colX + 105331 }
+    var camW: Int { 933061 }
     /// 撮影情報ボックスの左右余白(狭い列では詰めて「Shutter Speed: 1/800 sec」を1行に収める)
     var lowerInsets: (l: Int, r: Int) { narrow ? (36000, 0) : (91440, 91440) }
 
     static func single(_ layout: SlideLayout) -> Panel {
         layout == .forum
             ? Panel(photoX: 0, photoMaxW: PPTXBuilder.photoMaxW, colX: PPTXBuilder.colX, colW: PPTXBuilder.colW, narrow: false)
-            : Panel(photoX: 0, photoMaxW: 7717561, colX: 7990000, colW: 1143722, narrow: true)
+            : Panel(photoX: 0, photoMaxW: 7717561, colX: 8047536, colW: 1143722, narrow: true)
     }
     /// 2段組み(左・右)。右側は右端の列に学籍番号・氏名が入る
-    static let left = Panel(photoX: 0, photoMaxW: 3473576, colX: 3494029, colW: 1143722, narrow: true)
-    static let right = Panel(photoX: 4573960, photoMaxW: 3473576, colX: 7980947, colW: 1143722, narrow: true)
+    static let left = Panel(photoX: 0, photoMaxW: 3473576, colX: 3453800, colW: 1143722, narrow: true)
+    static let right = Panel(photoX: 4573960, photoMaxW: 3473576, colX: 8028384, colW: 1143722, narrow: true)
 }
 
 enum PPTXBuilder {
@@ -256,17 +260,25 @@ enum PPTXBuilder {
         }
 
         let lineY = 4507663
-        let lens = text(.lens), camera = text(.camera)
+        let lensLines = (text(.lens) ?? "").split(separator: "\n", omittingEmptySubsequences: true).map(String.init)
+        let camera = text(.camera)
         let list: [(FieldKind, String)] = [FieldKind.shutter, .focal, .aperture, .iso, .note].compactMap { k in text(k).map { (k, $0) } }
-        if lens != nil || camera != nil || !list.isEmpty {
+        if !lensLines.isEmpty || camera != nil || !list.isEmpty {
             shapes += lineShape(id: id, y: lineY, x: panel.lineX, w: panel.lineW); id += 1
         }
-        var top = lineY - 7000                                // 線の上へ積み上げる(レンズ → カメラ)
-        if let t = lens {
-            let y = top - Int(body(.lens, t)) - 91440; emit(.lens, t, y: y); top = y + 22000
+        let lensBottom = lineY + 10000                         // 線の上へ積み上げる(レンズ → カメラ)
+        var cameraBottom = lensBottom
+        if !lensLines.isEmpty {
+            let lensBody = Double(lensLines.reduce(0) { $0 + estimateLines($1, size: layout.fontSize(.lens), width: panel.camW) }) * layout.fontSize(.lens) * 1.2 * 12700
+            let y = lensBottom - Int(lensBody) - 91440
+            shapes += lensShape(id: id, y: y, h: Int(lensBody) + 91440, lines: lensLines, x: panel.camX, w: panel.camW, fonts: fonts, color: style.textHex); id += 1
+            cameraBottom = y + 105000
         }
         if let t = camera {
-            let y = top - Int(body(.camera, t)) - 91440; emit(.camera, t, y: y)
+            let n = estimateLines(t, size: layout.fontSize(.camera), width: panel.camW)
+            let body = Double(n) * layout.fontSize(.camera) * 1.2 * 12700
+            let y = cameraBottom - Int(body) - 91440 - 14000
+            shapes += textShape(id: id, y: y, h: Int(body) + 91440, text: t, size: layout.fontSize(.camera), x: panel.camX, w: panel.camW, fonts: fonts, color: style.textHex); id += 1
         }
         if !list.isEmpty {
             let h = Int(list.reduce(0.0) { $0 + body($1.0, $1.1) * lineSpacing }) + 91440
@@ -285,7 +297,7 @@ enum PPTXBuilder {
             guard let t = v(photo.title) else { return nil }
             return t.hasPrefix("「") ? t : "「\(t)」"
         case .camera: return v(photo.camera)
-        case .lens: return v(photo.lens)
+        case .lens: return layout == .compact ? v(photo.lens) : v(photo.lens).map { $0.replacingOccurrences(of: "\n", with: " ") }
         case .focal: return v(photo.focal).map { layout == .compact ? "Focal Length: \($0)mm" : "\($0)mm" }
         case .shutter: return v(photo.shutter).map { "Shutter Speed: \($0) sec" }
         case .aperture: return v(photo.aperture).map { "Aperture: f/\($0)" }
@@ -330,6 +342,18 @@ enum PPTXBuilder {
         let sz = Int(size * 100)
         return """
         <p:sp><p:nvSpPr><p:cNvPr id="\(id)" name="テキスト \(id)"/><p:cNvSpPr txBox="1"/><p:nvPr/></p:nvSpPr><p:spPr><a:xfrm><a:off x="\(x)" y="\(y)"/><a:ext cx="\(w)" cy="\(h)"/></a:xfrm><a:prstGeom prst="rect"><a:avLst/></a:prstGeom><a:noFill/></p:spPr><p:txBody><a:bodyPr wrap="square" rtlCol="0"><a:spAutoFit/></a:bodyPr><a:lstStyle/><a:p><a:pPr algn="ctr"/><a:r><a:rPr lang="ja-JP" altLang="en-US" sz="\(sz)" dirty="0"><a:solidFill><a:srgbClr val="\(color)"/></a:solidFill><a:latin typeface="\(esc(fonts.latin))"/><a:ea typeface="\(esc(fonts.ea))"/></a:rPr><a:t>\(esc(text))</a:t></a:r></a:p></p:txBody></p:sp>
+        """
+    }
+
+    /// レンズ名のボックス。1行なら中央、2行以上なら 1行目を左寄せ・最後の行を右寄せ(間は左寄せ)
+    static func lensShape(id: Int, y: Int, h: Int, lines: [String], x: Int, w: Int, fonts: SlideFonts, color: String) -> String {
+        let sz = Int(SlideLayout.compact.fontSize(.lens) * 100)
+        let paras = lines.enumerated().map { i, t -> String in
+            let algn = lines.count == 1 ? "ctr" : (i == lines.count - 1 ? "r" : "l")
+            return "<a:p><a:pPr algn=\"\(algn)\"/><a:r><a:rPr lang=\"ja-JP\" altLang=\"en-US\" sz=\"\(sz)\" dirty=\"0\"><a:solidFill><a:srgbClr val=\"\(color)\"/></a:solidFill><a:latin typeface=\"\(esc(fonts.latin))\"/><a:ea typeface=\"\(esc(fonts.ea))\"/></a:rPr><a:t>\(esc(t))</a:t></a:r></a:p>"
+        }.joined()
+        return """
+        <p:sp><p:nvSpPr><p:cNvPr id="\(id)" name="レンズ名"/><p:cNvSpPr txBox="1"/><p:nvPr/></p:nvSpPr><p:spPr><a:xfrm><a:off x="\(x)" y="\(y)"/><a:ext cx="\(w)" cy="\(h)"/></a:xfrm><a:prstGeom prst="rect"><a:avLst/></a:prstGeom><a:noFill/></p:spPr><p:txBody><a:bodyPr wrap="square" rtlCol="0"><a:spAutoFit/></a:bodyPr><a:lstStyle/>\(paras)</p:txBody></p:sp>
         """
     }
 

@@ -308,7 +308,8 @@ struct SuggestField: View {
 
     var body: some View {
         HStack(spacing: 2) {
-            TextField(label, text: $text)
+            TextField(label, text: $text, axis: .vertical)
+                .lineLimit(1...2)
                 .textFieldStyle(.roundedBorder).font(.caption)
                 .focused($focused)
             Menu {

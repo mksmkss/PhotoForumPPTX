@@ -252,11 +252,12 @@ struct SettingsView: View {
                         keyLabel: "EXIFのレンズ名", valueLabel: "表示名", table: model.lenses)
                 .tabItem { Label("レンズ名", systemImage: "camera.aperture") }
             FontSettings().tabItem { Label("フォント", systemImage: "textformat") }
+            LayoutSettings().tabItem { Label("レイアウト", systemImage: "rectangle.split.2x1") }
             BackgroundSettings().tabItem { Label("背景", systemImage: "paintpalette") }
             SpacingSettings().tabItem { Label("行間", systemImage: "text.alignleft") }
             AboutSettings().tabItem { Label("情報", systemImage: "info.circle") }
         }
-        .frame(width: 560, height: 460).padding()
+        .frame(width: 620, height: 520).padding()
     }
 }
 

@@ -22,6 +22,28 @@ struct SlideFonts: Equatable {
     static let `default` = SlideFonts(latin: "Arial", ea: template.ea)
 }
 
+/// 情報欄のデザイン。forum = 元のフォーラムのテンプレ(焦点距離を中央に大きく)、
+/// compact = カメラ名を大きく・レンズ名と露出を小さくまとめた形(2段組みと同じ構成)
+enum SlideLayout: String, CaseIterable, Identifiable {
+    case forum, compact
+    var id: String { rawValue }
+    var label: String {
+        switch self {
+        case .forum: return "フォーラム標準"
+        case .compact: return "コンパクト"
+        }
+    }
+
+    func fontSize(_ k: FieldKind) -> Double {
+        guard self == .compact else { return k.fontSize }
+        switch k {
+        case .camera: return 12
+        case .lens, .focal, .shutter, .aperture, .iso, .note: return 7
+        default: return k.fontSize
+        }
+    }
+}
+
 /// スライドの背景色と、それに合わせた文字色
 struct SlideStyle: Equatable {
     var bgHex: String
@@ -48,7 +70,11 @@ struct Panel {
     /// 撮影情報ボックスの左右余白(狭い列では詰めて「Shutter Speed: 1/800 sec」を1行に収める)
     var lowerInsets: (l: Int, r: Int) { narrow ? (36000, 0) : (91440, 91440) }
 
-    static let single = Panel(photoX: 0, photoMaxW: PPTXBuilder.photoMaxW, colX: PPTXBuilder.colX, colW: PPTXBuilder.colW, narrow: false)
+    static func single(_ layout: SlideLayout) -> Panel {
+        layout == .forum
+            ? Panel(photoX: 0, photoMaxW: PPTXBuilder.photoMaxW, colX: PPTXBuilder.colX, colW: PPTXBuilder.colW, narrow: false)
+            : Panel(photoX: 0, photoMaxW: 7717561, colX: 7990000, colW: 1143722, narrow: true)
+    }
     /// 2段組み(左・右)。右側は右端の列に学籍番号・氏名が入る
     static let left = Panel(photoX: 0, photoMaxW: 3473576, colX: 3494029, colW: 1143722, narrow: true)
     static let right = Panel(photoX: 4573960, photoMaxW: 3473576, colX: 7980947, colW: 1143722, narrow: true)
@@ -62,7 +88,7 @@ enum PPTXBuilder {
     static let startY = 180783
 
     static func build(template: URL, output: URL, photos: [Photo], fields: [FieldSetting],
-                      studentID: String, name: String, fonts: SlideFonts = .default, lineSpacing: Double = 1.0, style: SlideStyle = .black) throws {
+                      studentID: String, name: String, fonts: SlideFonts = .default, lineSpacing: Double = 1.0, style: SlideStyle = .black, layout: SlideLayout = .forum) throws {
         let fm = FileManager.default
         let work = fm.temporaryDirectory.appendingPathComponent("pfp-\(UUID().uuidString)")
         defer { try? fm.removeItem(at: work) }
@@ -89,7 +115,7 @@ enum PPTXBuilder {
                 try writeJPEG(photo, to: pkg.appendingPathComponent("ppt/media/\(imgName)"))
                 rels += "<Relationship Id=\"rId\(k + 2)\" Type=\"http://schemas.openxmlformats.org/officeDocument/2006/relationships/image\" Target=\"../media/\(imgName)\"/>"
             }
-            let xml = slideXML(photos: group, fields: fields, studentID: studentID, name: name, fonts: fonts, lineSpacing: lineSpacing, style: style)
+            let xml = slideXML(photos: group, fields: fields, studentID: studentID, name: name, fonts: fonts, lineSpacing: lineSpacing, style: style, layout: layout)
             try xml.write(to: pkg.appendingPathComponent("ppt/slides/slide\(n).xml"), atomically: true, encoding: .utf8)
             let relsXML = """
             <?xml version="1.0" encoding="UTF-8" standalone="yes"?>
@@ -131,14 +157,14 @@ enum PPTXBuilder {
     }
 
     static func slideXML(photos: [Photo], fields: [FieldSetting], studentID: String, name: String, fonts: SlideFonts,
-                         lineSpacing: Double = 1.0, style: SlideStyle = .black) -> String {
-        let panels: [Panel] = photos.count == 2 ? [.left, .right] : [.single]
+                         lineSpacing: Double = 1.0, style: SlideStyle = .black, layout: SlideLayout = .forum) -> String {
+        let panels: [Panel] = photos.count == 2 ? [.left, .right] : [.single(layout)]
         var shapes = "", id = 10
         for (i, photo) in photos.enumerated() {
             let panel = panels[i]
             shapes += pictureShape(id: 2 + i, rel: "rId\(i + 2)", photo: photo, panel: panel)
             shapes += panelShapes(photo: photo, panel: panel, identity: i == photos.count - 1, fields: fields,
-                                  studentID: studentID, name: name, fonts: fonts, lineSpacing: lineSpacing, style: style, id: &id)
+                                  studentID: studentID, name: name, fonts: fonts, lineSpacing: lineSpacing, style: style, layout: layout, id: &id)
         }
         return """
         <?xml version="1.0" encoding="UTF-8" standalone="yes"?>
@@ -161,7 +187,11 @@ enum PPTXBuilder {
     /// 撮影情報はテンプレート通り赤線を境に下部へ固定する(カメラ・レンズが線の上、露出が線の下)。
     /// identity=false の列には学籍番号・氏名を出さない(2段組みの左側)
     static func panelShapes(photo: Photo, panel: Panel, identity: Bool, fields: [FieldSetting], studentID: String, name: String,
-                            fonts: SlideFonts, lineSpacing: Double, style: SlideStyle, id: inout Int) -> String {
+                            fonts: SlideFonts, lineSpacing: Double, style: SlideStyle, layout: SlideLayout, id: inout Int) -> String {
+        if layout == .compact {
+            return compactPanelShapes(photo: photo, panel: panel, identity: identity, fields: fields, studentID: studentID, name: name,
+                                      fonts: fonts, lineSpacing: lineSpacing, style: style, id: &id)
+        }
         var shapes = ""
         func height(_ k: FieldKind, _ text: String) -> Int {
             Int(Double(estimateLines(text, size: k.fontSize, width: panel.colW)) * k.fontSize * 1.2 * 12700) + 91440
@@ -204,7 +234,49 @@ enum PPTXBuilder {
         return shapes
     }
 
-    static func lineText(_ k: FieldKind, photo: Photo, studentID: String, name: String) -> String? {
+    /// コンパクト: 個人情報は上、カメラ名(12pt)→レンズ名(7pt)→赤線→SS/焦点距離/F値/ISO(7pt・左寄せ)を下部にまとめる
+    static func compactPanelShapes(photo: Photo, panel: Panel, identity: Bool, fields: [FieldSetting], studentID: String, name: String,
+                                   fonts: SlideFonts, lineSpacing: Double, style: SlideStyle, id: inout Int) -> String {
+        let layout = SlideLayout.compact
+        var shapes = ""
+        func lines(_ k: FieldKind, _ t: String) -> Int { estimateLines(t, size: layout.fontSize(k), width: panel.colW) }
+        func body(_ k: FieldKind, _ t: String) -> Double { Double(lines(k, t)) * layout.fontSize(k) * 1.2 * 12700 }
+        func emit(_ k: FieldKind, _ t: String, y: Int) {
+            shapes += textShape(id: id, y: y, h: Int(body(k, t)) + 91440, text: t, size: layout.fontSize(k), x: panel.colX, w: panel.colW, fonts: fonts, color: style.textHex); id += 1
+        }
+        func text(_ k: FieldKind) -> String? {
+            guard fields.first(where: { $0.kind == k })?.enabled == true else { return nil }
+            if !identity && (k == .studentID || k == .name) { return nil }
+            return lineText(k, photo: photo, studentID: studentID, name: name, layout: layout).flatMap { $0.isEmpty ? nil : $0 }
+        }
+
+        var cursor = startY                                   // 上: 学籍番号・氏名・タイトル
+        for k in [FieldKind.studentID, .name, .title] {
+            if let t = text(k) { emit(k, t, y: cursor); cursor += Int(body(k, t)) }
+        }
+
+        let lineY = 4507663
+        let lens = text(.lens), camera = text(.camera)
+        let list: [(FieldKind, String)] = [FieldKind.shutter, .focal, .aperture, .iso, .note].compactMap { k in text(k).map { (k, $0) } }
+        if lens != nil || camera != nil || !list.isEmpty {
+            shapes += lineShape(id: id, y: lineY, x: panel.lineX, w: panel.lineW); id += 1
+        }
+        var top = lineY - 7000                                // 線の上へ積み上げる(レンズ → カメラ)
+        if let t = lens {
+            let y = top - Int(body(.lens, t)) - 91440; emit(.lens, t, y: y); top = y + 22000
+        }
+        if let t = camera {
+            let y = top - Int(body(.camera, t)) - 91440; emit(.camera, t, y: y)
+        }
+        if !list.isEmpty {
+            let h = Int(list.reduce(0.0) { $0 + body($1.0, $1.1) * lineSpacing }) + 91440
+            shapes += lowerShape(id: id, y: 4525086, h: h, items: list, x: panel.lowerX, w: panel.lowerW, insets: panel.lowerInsets,
+                                 fonts: fonts, spacing: lineSpacing, color: style.textHex, layout: layout); id += 1
+        }
+        return shapes
+    }
+
+    static func lineText(_ k: FieldKind, photo: Photo, studentID: String, name: String, layout: SlideLayout = .forum) -> String? {
         func v(_ s: String) -> String? { s.trimmingCharacters(in: .whitespaces).isEmpty ? nil : s.trimmingCharacters(in: .whitespaces) }
         switch k {
         case .studentID: return v(studentID)
@@ -214,7 +286,7 @@ enum PPTXBuilder {
             return t.hasPrefix("「") ? t : "「\(t)」"
         case .camera: return v(photo.camera)
         case .lens: return v(photo.lens)
-        case .focal: return v(photo.focal).map { "\($0)mm" }
+        case .focal: return v(photo.focal).map { layout == .compact ? "Focal Length: \($0)mm" : "\($0)mm" }
         case .shutter: return v(photo.shutter).map { "Shutter Speed: \($0) sec" }
         case .aperture: return v(photo.aperture).map { "Aperture: f/\($0)" }
         case .iso: return v(photo.iso).map { "ISO: \($0)" }
@@ -228,9 +300,9 @@ enum PPTXBuilder {
     }
 
     /// 撮影情報(シャッタースピード/F値/ISO/備考)を1つのテキストボックスにまとめる。行間は spacing(1.0 = 100%)
-    static func lowerShape(id: Int, y: Int, h: Int, items: [(FieldKind, String)], x: Int, w: Int, insets: (l: Int, r: Int), fonts: SlideFonts, spacing: Double, color: String) -> String {
+    static func lowerShape(id: Int, y: Int, h: Int, items: [(FieldKind, String)], x: Int, w: Int, insets: (l: Int, r: Int), fonts: SlideFonts, spacing: Double, color: String, layout: SlideLayout = .forum) -> String {
         let paras = items.map { k, t -> String in
-            let sz = Int(k.fontSize * 100)
+            let sz = Int(layout.fontSize(k) * 100)
             let ppr = "<a:pPr algn=\"l\"\(k == .note ? " marL=\"54000\"" : "")><a:lnSpc><a:spcPct val=\"\(Int((spacing * 100000).rounded()))\"/></a:lnSpc></a:pPr>"
             return "<a:p>\(ppr)<a:r><a:rPr lang=\"ja-JP\" altLang=\"en-US\" sz=\"\(sz)\" dirty=\"0\"><a:solidFill><a:srgbClr val=\"\(color)\"/></a:solidFill><a:latin typeface=\"\(esc(fonts.latin))\"/><a:ea typeface=\"\(esc(fonts.ea))\"/></a:rPr><a:t>\(esc(t))</a:t></a:r></a:p>"
         }.joined()

@@ -142,6 +142,8 @@ final class AppModel: ObservableObject {
     var style: SlideStyle { SlideStyle(bgHex: bgHex) }
     /// 書き出し後にpptxを開く(オフならFinderで表示)
     @Published var openAfterExport: Bool { didSet { UserDefaults.standard.set(openAfterExport, forKey: "openAfterExport") } }
+    /// 情報欄のデザイン
+    @Published var layout: SlideLayout { didSet { UserDefaults.standard.set(layout.rawValue, forKey: "layout") } }
     @Published var updating = false
     @Published var pendingNotes: [ReleaseNote] = []
 
@@ -164,6 +166,7 @@ final class AppModel: ObservableObject {
         lineSpacing = d.object(forKey: "lineSpacing") as? Double ?? 1.0
         bgHex = d.string(forKey: "bgHex") ?? SlideStyle.black.bgHex
         openAfterExport = d.object(forKey: "openAfterExport") as? Bool ?? true
+        layout = SlideLayout(rawValue: d.string(forKey: "layout") ?? "") ?? .forum
         let defaultFields: [FieldSetting] = [
             .init(kind: .camera, enabled: true), .init(kind: .lens, enabled: true),
             .init(kind: .focal, enabled: true), .init(kind: .shutter, enabled: true),
@@ -270,7 +273,7 @@ final class AppModel: ObservableObject {
             let template = Bundle.main.url(forResource: "template", withExtension: "pptx")
                 ?? URL(fileURLWithPath: FileManager.default.currentDirectoryPath + "/Resources/template.pptx")
             try PPTXBuilder.build(template: template, output: out, photos: photos, fields: fields,
-                                  studentID: studentID, name: name, fonts: fonts, lineSpacing: lineSpacing, style: style)
+                                  studentID: studentID, name: name, fonts: fonts, lineSpacing: lineSpacing, style: style, layout: layout)
             status = "書き出しました: \(out.lastPathComponent)"
             if openAfterExport { NSWorkspace.shared.open(out) } else { NSWorkspace.shared.activateFileViewerSelecting([out]) }
         } catch {

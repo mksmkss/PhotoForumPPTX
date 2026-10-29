@@ -135,6 +135,8 @@ final class AppModel: ObservableObject {
     @Published var fonts: SlideFonts { didSet { saveFonts() } }
     /// 撮影情報ボックスの行間(1.0 = 100%)
     @Published var lineSpacing: Double { didSet { UserDefaults.standard.set(lineSpacing, forKey: "lineSpacing") } }
+    /// 書き出し後にpptxを開く(オフならFinderで表示)
+    @Published var openAfterExport: Bool { didSet { UserDefaults.standard.set(openAfterExport, forKey: "openAfterExport") } }
     @Published var updating = false
     @Published var pendingNotes: [ReleaseNote] = []
 
@@ -155,6 +157,7 @@ final class AppModel: ObservableObject {
         fonts = SlideFonts(latin: d.string(forKey: "fontLatin") ?? SlideFonts.default.latin,
                            ea: d.string(forKey: "fontEA") ?? SlideFonts.default.ea)
         lineSpacing = d.object(forKey: "lineSpacing") as? Double ?? 1.0
+        openAfterExport = d.object(forKey: "openAfterExport") as? Bool ?? true
         let defaultFields: [FieldSetting] = [
             .init(kind: .camera, enabled: true), .init(kind: .lens, enabled: true),
             .init(kind: .focal, enabled: true), .init(kind: .shutter, enabled: true),
@@ -222,7 +225,7 @@ final class AppModel: ObservableObject {
             try PPTXBuilder.build(template: template, output: out, photos: photos, fields: fields,
                                   studentID: studentID, name: name, fonts: fonts, lineSpacing: lineSpacing)
             status = "書き出しました: \(out.lastPathComponent)"
-            NSWorkspace.shared.activateFileViewerSelecting([out])
+            if openAfterExport { NSWorkspace.shared.open(out) } else { NSWorkspace.shared.activateFileViewerSelecting([out]) }
         } catch {
             status = "失敗: \(error.localizedDescription)"
         }

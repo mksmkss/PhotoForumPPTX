@@ -178,6 +178,7 @@ struct SettingsView: View {
     @EnvironmentObject var model: AppModel
     var body: some View {
         TabView {
+            GeneralSettings().tabItem { Label("一般", systemImage: "gearshape") }
             TableEditor(title: "EXIFのカメラ型番 → 表示名\n(例: ILCE-1M2 → α1 II。スライドには「α1 II / ILCE-1M2」と出ます)",
                         keyLabel: "EXIFの型番", valueLabel: "表示名", table: model.cameras)
                 .tabItem { Label("カメラ名", systemImage: "camera") }
@@ -296,6 +297,19 @@ struct FontSettings: View {
                 Spacer()
             }
             Text("pptxを開く環境に、選んだフォントが入っていないと別のフォントで表示されます。配布や提出には、Calibri や游ゴシックなど標準的なものがおすすめです。")
+                .font(.caption).foregroundStyle(.secondary)
+        }
+        .padding()
+        .frame(maxHeight: .infinity, alignment: .top)
+    }
+}
+
+struct GeneralSettings: View {
+    @EnvironmentObject var model: AppModel
+    var body: some View {
+        Form {
+            Toggle("書き出したらpptxを自動で開く", isOn: $model.openAfterExport)
+            Text("オフにすると、書き出したファイルをFinderで表示します。")
                 .font(.caption).foregroundStyle(.secondary)
         }
         .padding()

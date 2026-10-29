@@ -306,6 +306,7 @@ struct SuggestField: View {
     /// 入力が終わった(フォーカスが外れた)とき
     var onCommit: (String) -> Void = { _ in }
     @FocusState private var focused: Bool
+    @State private var editing = false
     @State private var open = false
 
     private var matches: [String] {
@@ -316,12 +317,15 @@ struct SuggestField: View {
 
     var body: some View {
         HStack(spacing: 2) {
-            TextField(label, text: $text, axis: .vertical)
-                .lineLimit(1...2)
-                .textFieldStyle(.roundedBorder).font(.caption)
-                .focused($focused)
-                // SwiftUIのTextFieldはReturnで「確定」になり改行されないので、レンズ欄だけReturnで改行を入れる
-                .onSubmit { if allowsBreak, !text.contains("\n") { text += "\n"; focused = true } }
+            if allowsBreak {
+                // Return でカーソル位置に改行を入れられる欄(SwiftUIのTextFieldでは不可)
+                BreakableTextField(placeholder: label, text: $text, editing: $editing)
+            } else {
+                TextField(label, text: $text)
+                    .textFieldStyle(.roundedBorder).font(.caption)
+                    .focused($focused)
+                    .onChange(of: focused) { editing = $0 }
+            }
             Menu {
                 if candidates.isEmpty { Text("候補なし") }
                 ForEach(candidates, id: \.self) { c in Button(c) { text = c } }
@@ -345,14 +349,67 @@ struct SuggestField: View {
             }
             .frame(minWidth: 220).padding(4)
         }
-        .onChange(of: focused) { f in
+        .onChange(of: editing) { f in
             if f { open = true } else {
                 onCommit(text)
                 // クリックで候補を選べるよう、フォーカスが外れてから少し待って閉じる
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) { if !focused { open = false } }
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) { if !editing { open = false } }
             }
         }
-        .onChange(of: text) { _ in if focused { open = true } }
+        .onChange(of: text) { _ in if editing { open = true } }
+    }
+}
+
+/// 複数行(折り返しあり)の1行風テキスト欄。Return でカーソル位置に改行を入れ、フォーカスの出入りを通知する
+struct BreakableTextField: NSViewRepresentable {
+    let placeholder: String
+    @Binding var text: String
+    @Binding var editing: Bool
+
+    func makeNSView(context: Context) -> NSTextField {
+        let f = NSTextField()
+        f.placeholderString = placeholder
+        f.font = .systemFont(ofSize: NSFont.smallSystemFontSize)
+        f.bezelStyle = .roundedBezel
+        f.usesSingleLineMode = false
+        f.cell?.wraps = true
+        f.cell?.isScrollable = false
+        f.lineBreakMode = .byWordWrapping
+        f.delegate = context.coordinator
+        f.setContentHuggingPriority(.defaultLow, for: .horizontal)
+        return f
+    }
+
+    func updateNSView(_ f: NSTextField, context: Context) {
+        context.coordinator.parent = self
+        if f.stringValue != text { f.stringValue = text }
+    }
+
+    func sizeThatFits(_ proposal: ProposedViewSize, nsView f: NSTextField, context: Context) -> CGSize? {
+        let w = proposal.width ?? 200
+        let h = f.cell?.cellSize(forBounds: NSRect(x: 0, y: 0, width: w, height: .greatestFiniteMagnitude)).height ?? 22
+        return CGSize(width: w, height: max(h, 22))
+    }
+
+    func makeCoordinator() -> Coordinator { Coordinator(self) }
+
+    final class Coordinator: NSObject, NSTextFieldDelegate {
+        var parent: BreakableTextField
+        var isEditing = false
+        init(_ p: BreakableTextField) { parent = p }
+
+        func controlTextDidBeginEditing(_ n: Notification) { isEditing = true; parent.editing = true }
+        func controlTextDidEndEditing(_ n: Notification) { isEditing = false; parent.editing = false }
+        func controlTextDidChange(_ n: Notification) {
+            if let f = n.object as? NSTextField { parent.text = f.stringValue }
+        }
+        func control(_ control: NSControl, textView: NSTextView, doCommandBy sel: Selector) -> Bool {
+            if sel == #selector(NSResponder.insertNewline(_:)) {
+                textView.insertNewlineIgnoringFieldEditor(nil)
+                return true
+            }
+            return false
+        }
     }
 }
 

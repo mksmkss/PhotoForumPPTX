@@ -61,8 +61,9 @@
                 <TextBlock Text="和文フォント" FontWeight="Bold" Margin="0,14,0,4" />
                 <ComboBox ItemsSource="{Binding AvailableEaFonts}" SelectedItem="{Binding FontEa}" Width="260" HorizontalAlignment="Left" />
 
-                <TextBlock Margin="0,16,0,0" FontSize="14" FontFamily="{Binding FontLatin}"
-                           Text="Shutter Speed: 1/800 sec   α1 II / ILCE-1M2   「作品タイトル」" />
+                <TextBlock Margin="0,16,0,0" FontSize="14"
+                           local:FontPreview.LatinFont="{Binding FontLatin}"
+                           local:FontPreview.EaFont="{Binding FontEa}" />
 
                 <Button Content="初期値(Arial)に戻す" Command="{Binding ResetFontsCommand}" Padding="8,4" Margin="0,14,0,0" HorizontalAlignment="Left" />
 

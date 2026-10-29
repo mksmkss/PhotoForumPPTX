@@ -320,6 +320,8 @@ struct SuggestField: View {
                 .lineLimit(1...2)
                 .textFieldStyle(.roundedBorder).font(.caption)
                 .focused($focused)
+                // SwiftUIのTextFieldはReturnで「確定」になり改行されないので、レンズ欄だけReturnで改行を入れる
+                .onSubmit { if allowsBreak, !text.contains("\n") { text += "\n"; focused = true } }
             Menu {
                 if candidates.isEmpty { Text("候補なし") }
                 ForEach(candidates, id: \.self) { c in Button(c) { text = c } }

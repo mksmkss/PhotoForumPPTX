@@ -7,6 +7,7 @@
         mc:Ignorable="d"
         Title="設定" Width="580" Height="480" WindowStartupLocation="CenterOwner" ResizeMode="CanResizeWithGrip">
     <Window.Resources>
+        <local:LineSpacingToHeightConverter x:Key="LineSpacingToHeightConverter" />
         <DataTemplate x:Key="MapTableEditorTemplate">
             <DockPanel Margin="10">
                 <TextBlock DockPanel.Dock="Top" Text="{Binding Caption}" TextWrapping="Wrap"
@@ -60,7 +61,7 @@
                 <TextBlock Text="和文フォント" FontWeight="Bold" Margin="0,14,0,4" />
                 <ComboBox ItemsSource="{Binding AvailableEaFonts}" SelectedItem="{Binding FontEa}" Width="260" HorizontalAlignment="Left" />
 
-                <TextBlock Margin="0,16,0,0" FontSize="14"
+                <TextBlock Margin="0,16,0,0" FontSize="14" FontFamily="{Binding FontLatin}"
                            Text="Shutter Speed: 1/800 sec   α1 II / ILCE-1M2   「作品タイトル」" />
 
                 <Button Content="初期値(Arial)に戻す" Command="{Binding ResetFontsCommand}" Padding="8,4" Margin="0,14,0,0" HorizontalAlignment="Left" />
@@ -76,14 +77,18 @@
                     <TextBlock DockPanel.Dock="Right" Width="50" TextAlignment="Right"
                                Text="{Binding LineSpacing, StringFormat={}{0:P0}}" />
                     <Slider Minimum="0.8" Maximum="2.0" TickFrequency="0.05" IsSnapToTickEnabled="True"
+                            SmallChange="0.05" LargeChange="0.1"
                             Value="{Binding LineSpacing}" />
                 </DockPanel>
 
                 <Border Background="Black" Padding="10" Margin="0,16,0,0" HorizontalAlignment="Left">
                     <StackPanel>
-                        <TextBlock Text="Shutter Speed: 1/800 sec" Foreground="White" FontSize="12" />
-                        <TextBlock Text="Aperture: f/2.8" Foreground="White" FontSize="12" />
-                        <TextBlock Text="ISO: 400" Foreground="White" FontSize="12" />
+                        <TextBlock Text="Shutter Speed: 1/800 sec" Foreground="White" FontSize="12"
+                                   Height="{Binding LineSpacing, Converter={StaticResource LineSpacingToHeightConverter}}" />
+                        <TextBlock Text="Aperture: f/2.8" Foreground="White" FontSize="12"
+                                   Height="{Binding LineSpacing, Converter={StaticResource LineSpacingToHeightConverter}}" />
+                        <TextBlock Text="ISO: 400" Foreground="White" FontSize="12"
+                                   Height="{Binding LineSpacing, Converter={StaticResource LineSpacingToHeightConverter}}" />
                     </StackPanel>
                 </Border>
 

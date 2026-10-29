@@ -48,3 +48,18 @@ public sealed class ThumbnailConverter : IValueConverter
     public object ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture) =>
         throw new NotSupportedException();
 }
+
+/// <summary>設定画面「行間」タブのデモ表示用。実際のpptxのサイズ比(フォントサイズ×1.2×行間)を1.6倍に拡大して見せる</summary>
+public sealed class LineSpacingToHeightConverter : IValueConverter
+{
+    private const double DemoFontSize = 7.5 * 1.6; // pptx本体の撮影情報フォントサイズをデモ表示用に拡大
+
+    public object Convert(object? value, Type targetType, object? parameter, CultureInfo culture)
+    {
+        var spacing = value is double d ? d : 1.0;
+        return DemoFontSize * 1.2 * spacing;
+    }
+
+    public object ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture) =>
+        throw new NotSupportedException();
+}

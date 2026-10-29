@@ -18,6 +18,8 @@ struct SlideFonts: Equatable {
     var ea: String
     /// テンプレートの既定
     static let template = SlideFonts(latin: "Calibri", ea: "ＭＳ Ｐゴシック")
+    /// アプリの初期値(欧文はArial、和文はテンプレートのまま)
+    static let `default` = SlideFonts(latin: "Arial", ea: template.ea)
 }
 
 enum PPTXBuilder {
@@ -28,7 +30,7 @@ enum PPTXBuilder {
     static let startY = 180783
 
     static func build(template: URL, output: URL, photos: [Photo], fields: [FieldSetting],
-                      studentID: String, name: String, fonts: SlideFonts = .template) throws {
+                      studentID: String, name: String, fonts: SlideFonts = .default, lineSpacing: Double = 1.0) throws {
         let fm = FileManager.default
         let work = fm.temporaryDirectory.appendingPathComponent("pfp-\(UUID().uuidString)")
         defer { try? fm.removeItem(at: work) }
@@ -51,7 +53,7 @@ enum PPTXBuilder {
             let n = i + 1
             let imgName = "photo\(n).jpeg"
             try writeJPEG(photo, to: pkg.appendingPathComponent("ppt/media/\(imgName)"))
-            let xml = slideXML(photo: photo, fields: fields, studentID: studentID, name: name, fonts: fonts)
+            let xml = slideXML(photo: photo, fields: fields, studentID: studentID, name: name, fonts: fonts, lineSpacing: lineSpacing)
             try xml.write(to: pkg.appendingPathComponent("ppt/slides/slide\(n).xml"), atomically: true, encoding: .utf8)
             let rels = """
             <?xml version="1.0" encoding="UTF-8" standalone="yes"?>
@@ -82,7 +84,7 @@ enum PPTXBuilder {
 
     // MARK: - スライド生成
 
-    static func slideXML(photo: Photo, fields: [FieldSetting], studentID: String, name: String, fonts: SlideFonts) -> String {
+    static func slideXML(photo: Photo, fields: [FieldSetting], studentID: String, name: String, fonts: SlideFonts, lineSpacing: Double = 1.0) -> String {
         // 写真: 左寄せ・高さいっぱい。横長すぎて右カラムに掛かる場合のみ幅に合わせて縮小
         let aspect = photo.pixelSize.width / photo.pixelSize.height
         var w = Int((Double(slideH) * aspect).rounded()), h = slideH
@@ -127,9 +129,10 @@ enum PPTXBuilder {
                 let y = edge + inset - height(k, t)
                 emit(k, t, y: y); edge = y + inset
             }
-            var down = lineY + 30000 - inset
-            for (k, t) in lower {                        // 線の下は左寄せ
-                emit(k, t, y: down, left: true); down += step(k, t)
+            let down = lineY + 30000 - inset
+            if !lower.isEmpty {                          // 線の下は1つのテキストボックスにまとめ、左寄せ
+                let h = lowerHeight(lower, spacing: lineSpacing)
+                shapes += lowerShape(id: id, y: down, h: h, items: lower, fonts: fonts, spacing: lineSpacing); id += 1
             }
         }
 
@@ -157,8 +160,27 @@ enum PPTXBuilder {
         }
     }
 
-    static func estimateLines(_ s: String, size: Double) -> Int {
-        let avail = Double(colW) / 12700 - 14.4
+    static let lowerX = 7817724, lowerW = 1326277
+
+    static func lowerHeight(_ items: [(FieldKind, String)], spacing: Double) -> Int {
+        let body = items.reduce(0.0) { $0 + Double(estimateLines($1.1, size: $1.0.fontSize, width: lowerW)) * $1.0.fontSize * 1.2 * spacing }
+        return Int(body * 12700) + 91440
+    }
+
+    /// 撮影情報(シャッタースピード/F値/ISO/備考)を1つのテキストボックスにまとめる。行間は spacing(1.0 = 100%)
+    static func lowerShape(id: Int, y: Int, h: Int, items: [(FieldKind, String)], fonts: SlideFonts, spacing: Double) -> String {
+        let paras = items.map { k, t -> String in
+            let sz = Int(k.fontSize * 100)
+            let ppr = "<a:pPr algn=\"l\"\(k == .note ? " marL=\"54000\"" : "")><a:lnSpc><a:spcPct val=\"\(Int((spacing * 100000).rounded()))\"/></a:lnSpc></a:pPr>"
+            return "<a:p>\(ppr)<a:r><a:rPr lang=\"ja-JP\" altLang=\"en-US\" sz=\"\(sz)\" dirty=\"0\"><a:solidFill><a:prstClr val=\"white\"/></a:solidFill><a:latin typeface=\"\(esc(fonts.latin))\"/><a:ea typeface=\"\(esc(fonts.ea))\"/></a:rPr><a:t>\(esc(t))</a:t></a:r></a:p>"
+        }.joined()
+        return """
+        <p:sp><p:nvSpPr><p:cNvPr id="\(id)" name="撮影情報"/><p:cNvSpPr txBox="1"/><p:nvPr/></p:nvSpPr><p:spPr><a:xfrm><a:off x="\(lowerX)" y="\(y)"/><a:ext cx="\(lowerW)" cy="\(h)"/></a:xfrm><a:prstGeom prst="rect"><a:avLst/></a:prstGeom><a:noFill/></p:spPr><p:txBody><a:bodyPr wrap="square" rtlCol="0"><a:spAutoFit/></a:bodyPr><a:lstStyle/>\(paras)</p:txBody></p:sp>
+        """
+    }
+
+    static func estimateLines(_ s: String, size: Double, width colWidth: Int = colW) -> Int {
+        let avail = Double(colWidth) / 12700 - 14.4
         var width = 0.0, lines = 1.0
         for ch in s.unicodeScalars {
             let cw = ch.value < 0x2000 ? size * 0.52 : size
@@ -172,7 +194,7 @@ enum PPTXBuilder {
         s.replacingOccurrences(of: "&", with: "&amp;").replacingOccurrences(of: "<", with: "&lt;").replacingOccurrences(of: ">", with: "&gt;")
     }
 
-    static func textShape(id: Int, y: Int, h: Int, text: String, size: Double, left: Bool = false, indent: Bool = false, fonts: SlideFonts = .template) -> String {
+    static func textShape(id: Int, y: Int, h: Int, text: String, size: Double, left: Bool = false, indent: Bool = false, fonts: SlideFonts = .default) -> String {
         let sz = Int(size * 100)
         // 左寄せはテンプレートの露出情報ボックスと同じ位置・幅(赤線の左端に文字頭を揃える)
         let x = left ? 7817724 : colX, w = left ? 1326277 : colW

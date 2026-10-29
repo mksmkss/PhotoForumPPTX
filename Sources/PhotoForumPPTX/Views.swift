@@ -180,11 +180,13 @@ struct SettingsView: View {
         TabView {
             TableEditor(title: "EXIFのカメラ型番 → 表示名\n(例: ILCE-1M2 → α1 II。スライドには「α1 II / ILCE-1M2」と出ます)",
                         keyLabel: "EXIFの型番", valueLabel: "表示名", table: model.cameras)
-                .tabItem { Text("カメラ名") }
+                .tabItem { Label("カメラ名", systemImage: "camera") }
             TableEditor(title: "EXIFのレンズ名 → 表示名\n(未登録ならEXIFの名前をそのまま使います)",
                         keyLabel: "EXIFのレンズ名", valueLabel: "表示名", table: model.lenses)
-                .tabItem { Text("レンズ名") }
-            FontSettings().tabItem { Text("フォント") }
+                .tabItem { Label("レンズ名", systemImage: "camera.aperture") }
+            FontSettings().tabItem { Label("フォント", systemImage: "textformat") }
+            SpacingSettings().tabItem { Label("行間", systemImage: "text.alignleft") }
+            AboutSettings().tabItem { Label("情報", systemImage: "info.circle") }
         }
         .frame(width: 560, height: 460).padding()
     }
@@ -290,7 +292,7 @@ struct FontSettings: View {
             Text("Shutter Speed: 1/800 sec   α1 II / ILCE-1M2   「作品タイトル」")
                 .font(.custom(model.fonts.latin, size: 14)).padding(.vertical, 6)
             HStack {
-                Button("テンプレートの既定に戻す") { model.fonts = .template }
+                Button("初期値(Arial)に戻す") { model.fonts = .default }
                 Spacer()
             }
             Text("pptxを開く環境に、選んだフォントが入っていないと別のフォントで表示されます。配布や提出には、Calibri や游ゴシックなど標準的なものがおすすめです。")
@@ -298,6 +300,76 @@ struct FontSettings: View {
         }
         .padding()
         .frame(maxHeight: .infinity, alignment: .top)
+    }
+}
+
+/// 撮影情報ボックス(Shutter Speed / Aperture / ISO)の行間。デモテキストで見ながら調整する
+struct SpacingSettings: View {
+    @EnvironmentObject var model: AppModel
+    private let demo: [(String, Double)] = [
+        ("Shutter Speed: 1/800 sec", 7.5), ("Aperture: f/2.8", 7.5), ("ISO: 400", 7.5), ("Step Crop", 7.5),
+    ]
+
+    var body: some View {
+        Form {
+            HStack {
+                Slider(value: $model.lineSpacing, in: 0.8...2.0, step: 0.05)
+                Text("\(Int((model.lineSpacing * 100).rounded()))%").monospacedDigit().frame(width: 48, alignment: .trailing)
+            }
+            // スライドの撮影情報ボックスと同じ見た目(黒背景・白文字・左寄せ)。1pt=1.6倍に拡大して表示
+            VStack(alignment: .leading, spacing: 0) {
+                ForEach(demo, id: \.0) { t, size in
+                    Text(t).font(.custom(model.fonts.latin, size: size * 1.6))
+                        .frame(minHeight: size * 1.6 * 1.2 * model.lineSpacing, alignment: .leading)
+                }
+            }
+            .foregroundStyle(.white).padding(8).frame(width: 220, alignment: .leading).background(.black)
+            HStack {
+                Button("100%に戻す") { model.lineSpacing = 1.0 }
+                Spacer()
+            }
+            Text("線の下の撮影情報(Shutter Speed / Aperture / ISO / 備考)を1つのテキストボックスにまとめ、その中の行間を指定します。")
+                .font(.caption).foregroundStyle(.secondary)
+        }
+        .padding()
+        .frame(maxHeight: .infinity, alignment: .top)
+    }
+}
+
+/// アプリ情報(バージョン・アップデート・リンク)
+struct AboutSettings: View {
+    @EnvironmentObject var model: AppModel
+    @Environment(\.openWindow) private var openWindow
+
+    var body: some View {
+        VStack(spacing: 10) {
+            Image(nsImage: NSApp.applicationIconImage).resizable().frame(width: 72, height: 72)
+            Text("写真フォーラムPPTX").font(.title2).bold()
+            Text("バージョン \(Updater.currentVersion)").foregroundStyle(.secondary)
+            if let u = model.update {
+                HStack {
+                    Text("新しい版 v\(u.version) があります")
+                    if model.updating { ProgressView().controlSize(.small) }
+                    else { Button("今すぐ更新") { Task { await model.installUpdate() } }.buttonStyle(.borderedProminent) }
+                }
+            } else {
+                HStack {
+                    Button("アップデートを確認") { Task { await model.checkForUpdate(manual: true) } }
+                    if !model.status.isEmpty { Text(model.status).font(.caption).foregroundStyle(.secondary) }
+                }
+            }
+            Divider().padding(.vertical, 6)
+            HStack {
+                Button("新機能(更新履歴)") { openWindow(id: "whatsnew") }
+                Button("使い方") { openWindow(id: "help") }
+            }
+            HStack {
+                Button("不具合・要望を報告") { NSWorkspace.shared.open(Links.newIssue) }
+                Button("GitHub リポジトリ") { NSWorkspace.shared.open(Links.repo) }
+            }
+        }
+        .padding()
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
     }
 }
 

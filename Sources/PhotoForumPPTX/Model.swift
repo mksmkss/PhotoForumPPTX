@@ -204,6 +204,47 @@ final class AppModel: ObservableObject {
         if let data = try? JSONEncoder().encode(fields) { d.set(data, forKey: "fields") }
     }
 
+    func remove(_ id: UUID) { _ = detach(id) }
+
+    /// スライド単位の並び(2段組みは2枚で1スライド)
+    var slides: [[Photo]] { PPTXBuilder.slideGroups(photos) }
+
+    /// 右側の相方になっている写真の pairWithNext を落とし、左右の組が崩れないようにする
+    private func normalizePairs() {
+        var i = 0
+        while i < photos.count {
+            if photos[i].pairWithNext, i + 1 < photos.count { photos[i + 1].pairWithNext = false; i += 2 }
+            else { photos[i].pairWithNext = false; i += 1 }
+        }
+    }
+
+    /// 写真を取り出す(組の片方なら、残った方は単独スライドに戻る)
+    private func detach(_ id: UUID) -> Photo? {
+        guard let i = photos.firstIndex(where: { $0.id == id }) else { return nil }
+        let p = photos.remove(at: i)
+        if i > 0, photos[i - 1].pairWithNext, p.pairWithNext == false { photos[i - 1].pairWithNext = false }
+        p.pairWithNext = false
+        normalizePairs()
+        return p
+    }
+
+    /// ドラッグした写真を、target と同じスライドの右側に並べる(target が単独スライドのときだけ)
+    func place(_ id: UUID, besides target: UUID) {
+        guard id != target, let p = detach(id), let t = photos.firstIndex(where: { $0.id == target }) else { return }
+        photos.insert(p, at: t + 1)
+        photos[t].pairWithNext = true
+        normalizePairs()
+    }
+
+    /// ドラッグした写真を、slideIndex 番目のスライドの手前(末尾なら最後)に単独スライドとして置く
+    func place(_ id: UUID, beforeSlide slideIndex: Int) {
+        guard let p = detach(id) else { return }
+        let groups = slides
+        let at = groups.prefix(max(0, slideIndex)).reduce(0) { $0 + $1.count }
+        photos.insert(p, at: min(at, photos.count))
+        normalizePairs()
+    }
+
     func add(urls: [URL]) {
         for u in urls {
             if let p = Photo(url: u, cameras: cameras, lenses: lenses) { photos.append(p) }

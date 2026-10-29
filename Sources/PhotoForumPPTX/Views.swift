@@ -26,6 +26,8 @@ struct PhotoForumApp: App {
 struct ContentView: View {
     @EnvironmentObject var model: AppModel
     @State private var targeted = false
+    @State private var gapTarget: Int?
+    @State private var slotTarget: UUID?
 
     var body: some View {
         VStack(spacing: 0) {
@@ -85,17 +87,63 @@ struct ContentView: View {
             }.padding(10)
             Divider()
             if model.photos.isEmpty {
-                Text("写真を選ぶと、EXIFを読み取って1枚1ページで並べます").foregroundStyle(.secondary)
+                Text("写真を選ぶと、EXIFを読み取って1枚1ページで並べます(写真をドラッグして2枚並べも可)").foregroundStyle(.secondary)
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
             } else {
-                List {
-                    ForEach(model.photos) { p in
-                        PhotoRow(photo: p, onRemove: { model.photos.removeAll { $0.id == p.id } })
+                ScrollView {
+                    let slides = model.slides
+                    LazyVStack(spacing: 0) {
+                        ForEach(Array(slides.enumerated()), id: \.offset) { i, group in
+                            gap(before: i)
+                            slideCard(group, number: i + 1)
+                        }
+                        gap(before: slides.count)
                     }
-                    .onMove { model.photos.move(fromOffsets: $0, toOffset: $1) }
+                    .padding(.horizontal, 10)
                 }
             }
         }
+    }
+
+    /// スライドの間。ここにドロップすると、その位置に単独スライドとして入る
+    func gap(before index: Int) -> some View {
+        Color.clear.frame(height: 14)
+            .overlay(Capsule().fill(Color.accentColor).frame(height: 3).opacity(gapTarget == index ? 1 : 0))
+            .contentShape(Rectangle())
+            .dropDestination(for: String.self) { items, _ in
+                guard let id = items.first.flatMap(UUID.init(uuidString:)) else { return false }
+                model.place(id, beforeSlide: index); return true
+            } isTargeted: { gapTarget = $0 ? index : (gapTarget == index ? nil : gapTarget) }
+    }
+
+    /// 1スライド分。写真が1枚なら右に「並べる」ためのドロップ枠を出す
+    func slideCard(_ group: [Photo], number: Int) -> some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Text("スライド \(number)").font(.caption).foregroundStyle(.secondary)
+            HStack(alignment: .top, spacing: 10) {
+                ForEach(group) { p in
+                    PhotoRow(photo: p, compact: group.count == 2, onRemove: { model.remove(p.id) })
+                        .frame(maxWidth: .infinity, alignment: .topLeading)
+                }
+                if group.count == 1, let only = group.first {
+                    pairSlot(for: only)
+                }
+            }
+        }
+        .padding(8)
+        .background(RoundedRectangle(cornerRadius: 8).fill(Color.secondary.opacity(0.08)))
+    }
+
+    func pairSlot(for target: Photo) -> some View {
+        RoundedRectangle(cornerRadius: 6)
+            .strokeBorder(style: StrokeStyle(lineWidth: 1.5, dash: [5]))
+            .foregroundStyle(slotTarget == target.id ? Color.accentColor : Color.secondary.opacity(0.5))
+            .frame(width: 96, height: 80)
+            .overlay(Text("写真をここに\nドラッグして\n左右に並べる").font(.caption2).multilineTextAlignment(.center).foregroundStyle(.secondary))
+            .dropDestination(for: String.self) { items, _ in
+                guard let id = items.first.flatMap(UUID.init(uuidString:)) else { return false }
+                model.place(id, besides: target.id); return true
+            } isTargeted: { slotTarget = $0 ? target.id : (slotTarget == target.id ? nil : slotTarget) }
     }
 
     var sidebar: some View {
@@ -124,18 +172,26 @@ struct ContentView: View {
 struct PhotoRow: View {
     @ObservedObject var photo: Photo
     @EnvironmentObject var model: AppModel
+    /// 2段組みのとき。幅が半分になるので縦に並べる
+    var compact = false
     var onRemove: () -> Void
 
     var body: some View {
-        HStack(alignment: .top, spacing: 12) {
+        let layout = compact ? AnyLayout(VStackLayout(alignment: .leading, spacing: 8)) : AnyLayout(HStackLayout(alignment: .top, spacing: 12))
+        layout {
             Group {
                 if let t = photo.thumbnail { Image(nsImage: t).resizable().scaledToFit() } else { Color.gray }
-            }.frame(width: 110, height: 80).background(Color.black)
+            }
+            .frame(width: compact ? nil : 110, height: 80).frame(maxWidth: compact ? .infinity : nil).background(Color.black)
+            .draggable(photo.id.uuidString) {
+                if let t = photo.thumbnail { Image(nsImage: t).resizable().scaledToFit().frame(width: 90, height: 66) }
+            }
+            .help("ドラッグして並べ替え・2段組み")
             VStack(alignment: .leading, spacing: 4) {
                 HStack {
-                    Text(photo.url.lastPathComponent).font(.caption).foregroundStyle(.secondary)
+                    Text(photo.url.lastPathComponent).font(.caption).foregroundStyle(.secondary).lineLimit(1)
                     Spacer()
-                    Toggle("次の写真と2段組み", isOn: $photo.pairWithNext).toggleStyle(.checkbox).font(.caption).disabled(!canPair)
+                    Button(role: .destructive, action: onRemove) { Image(systemName: "xmark.circle") }.buttonStyle(.borderless)
                 }
                 if model.fields.first(where: { $0.kind == .title })?.enabled == true {
                     TextField("作品タイトル", text: $photo.title)
@@ -143,22 +199,22 @@ struct PhotoRow: View {
                 if model.fields.first(where: { $0.kind == .note })?.enabled == true {
                     TextField("備考 (例: *Step Crop: 70mm equiv.)", text: $photo.note)
                 }
-                Grid(alignment: .leading, horizontalSpacing: 6, verticalSpacing: 3) {
-                    GridRow { suggestField("カメラ", $photo.camera, cameraCandidates); suggestField("レンズ", $photo.lens, lensCandidates) }
-                    GridRow {
-                        HStack { field("焦点距離(mm)", $photo.focal); field("SS", $photo.shutter) }
-                        HStack { field("F", $photo.aperture); field("ISO", $photo.iso) }
+                if compact {
+                    suggestField("カメラ", $photo.camera, cameraCandidates)
+                    suggestField("レンズ", $photo.lens, lensCandidates)
+                    HStack { field("焦点距離(mm)", $photo.focal); field("SS", $photo.shutter) }
+                    HStack { field("F", $photo.aperture); field("ISO", $photo.iso) }
+                } else {
+                    Grid(alignment: .leading, horizontalSpacing: 6, verticalSpacing: 3) {
+                        GridRow { suggestField("カメラ", $photo.camera, cameraCandidates); suggestField("レンズ", $photo.lens, lensCandidates) }
+                        GridRow {
+                            HStack { field("焦点距離(mm)", $photo.focal); field("SS", $photo.shutter) }
+                            HStack { field("F", $photo.aperture); field("ISO", $photo.iso) }
+                        }
                     }
                 }
             }
-            Button(role: .destructive, action: onRemove) { Image(systemName: "xmark.circle") }.buttonStyle(.borderless)
         }.padding(.vertical, 4)
-    }
-
-    /// 次の写真があり、自分が前の写真の2段組みの相方(右側)になっていないときだけ有効
-    var canPair: Bool {
-        guard let i = model.photos.firstIndex(where: { $0.id == photo.id }), i + 1 < model.photos.count else { return false }
-        return i == 0 || !model.photos[i - 1].pairWithNext || photo.pairWithNext
     }
 
     /// 対応表の表示名(カメラは「表示名 / 型番」)

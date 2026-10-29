@@ -7,6 +7,11 @@ public static class ReleaseNotes
 {
     public static readonly IReadOnlyList<ReleaseNote> All = new[]
     {
+        new ReleaseNote("0.3", new[]
+        {
+            "アップデートのダウンロードが途中で失敗しにくいよう、タイムアウトを延長しました",
+            "アップデートに失敗したとき、画面上部にも理由が表示されるようになりました",
+        }),
         new ReleaseNote("0.2", new[]
         {
             "ヘルプ(使い方・不具合報告)と新機能ポップアップを追加しました",

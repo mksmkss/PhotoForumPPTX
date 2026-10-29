@@ -146,6 +146,8 @@ final class AppModel: ObservableObject {
     @Published var layout: SlideLayout { didSet { UserDefaults.standard.set(layout.rawValue, forKey: "layout") } }
     /// 手入力したレンズ名(マニュアルレンズなど)。一度入れたら候補に出す
     @Published var rememberedLenses: [String] = UserDefaults.standard.stringArray(forKey: "rememberedLenses") ?? []
+    /// 手入力したレンズの焦点距離(オールドレンズ用)。レンズ名を選ぶと自動で入る
+    @Published var lensFocal: [String: String] = UserDefaults.standard.dictionary(forKey: "lensFocal") as? [String: String] ?? [:]
     @Published var updating = false
     @Published var pendingNotes: [ReleaseNote] = []
 
@@ -210,9 +212,11 @@ final class AppModel: ObservableObject {
     }
 
     /// レンズ名を覚える(新しい順・重複なし・最大50件)。対応表にある名前は覚えない
-    func rememberLens(_ name: String) {
+    func rememberLens(_ name: String, focal: String = "") {
         let t = name.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !t.isEmpty, !lenses.entries.contains(where: { $0.value == t }) else { return }
+        let f = focal.trimmingCharacters(in: .whitespaces)
+        if !f.isEmpty { lensFocal[t] = f; UserDefaults.standard.set(lensFocal, forKey: "lensFocal") }
         rememberedLenses.removeAll { $0 == t }
         rememberedLenses.insert(t, at: 0)
         if rememberedLenses.count > 50 { rememberedLenses.removeLast() }
@@ -286,7 +290,7 @@ final class AppModel: ObservableObject {
                 ?? URL(fileURLWithPath: FileManager.default.currentDirectoryPath + "/Resources/template.pptx")
             try PPTXBuilder.build(template: template, output: out, photos: photos, fields: fields,
                                   studentID: studentID, name: name, fonts: fonts, lineSpacing: lineSpacing, style: style, layout: layout)
-            photos.forEach { rememberLens($0.lens) }
+            photos.forEach { rememberLens($0.lens, focal: $0.focal) }
             status = "書き出しました: \(out.lastPathComponent)"
             if openAfterExport { NSWorkspace.shared.open(out) } else { NSWorkspace.shared.activateFileViewerSelecting([out]) }
         } catch {

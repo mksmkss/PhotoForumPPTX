@@ -201,12 +201,12 @@ struct PhotoRow: View {
                 }
                 if compact {
                     suggestField("カメラ", $photo.camera, cameraCandidates)
-                    SuggestField(label: "レンズ", text: $photo.lens, candidates: lensCandidates, allowsBreak: true, onCommit: model.rememberLens)
+                    SuggestField(label: "レンズ", text: $photo.lens, candidates: lensCandidates, allowsBreak: true, onCommit: { model.rememberLens($0, focal: photo.focal) })
                     HStack { field("焦点距離(mm)", $photo.focal); field("SS", $photo.shutter) }
                     HStack { field("F", $photo.aperture); field("ISO", $photo.iso) }
                 } else {
                     Grid(alignment: .leading, horizontalSpacing: 6, verticalSpacing: 3) {
-                        GridRow { suggestField("カメラ", $photo.camera, cameraCandidates); SuggestField(label: "レンズ", text: $photo.lens, candidates: lensCandidates, allowsBreak: true, onCommit: model.rememberLens) }
+                        GridRow { suggestField("カメラ", $photo.camera, cameraCandidates); SuggestField(label: "レンズ", text: $photo.lens, candidates: lensCandidates, allowsBreak: true, onCommit: { model.rememberLens($0, focal: photo.focal) }) }
                         GridRow {
                             HStack { field("焦点距離(mm)", $photo.focal); field("SS", $photo.shutter) }
                             HStack { field("F", $photo.aperture); field("ISO", $photo.iso) }
@@ -215,6 +215,10 @@ struct PhotoRow: View {
                 }
             }
         }.padding(.vertical, 4)
+        // 覚えているレンズを選んだら、焦点距離が空のときだけ自動で入れる
+        .onChange(of: photo.lens) { l in
+            if photo.focal.isEmpty, let f = model.lensFocal[l.trimmingCharacters(in: .whitespacesAndNewlines)] { photo.focal = f }
+        }
     }
 
     /// 対応表の表示名(カメラは「表示名 / 型番」)

@@ -148,6 +148,8 @@ final class AppModel: ObservableObject {
     @Published var rememberedLenses: [String] = UserDefaults.standard.stringArray(forKey: "rememberedLenses") ?? []
     /// 手入力したレンズの焦点距離(オールドレンズ用)。レンズ名を選ぶと自動で入る
     @Published var lensFocal: [String: String] = UserDefaults.standard.dictionary(forKey: "lensFocal") as? [String: String] ?? [:]
+    /// 赤線と撮影情報(SS・F値など)の間隔の調整(pt。0が標準、+で広がる)
+    @Published var lineGap: Double { didSet { UserDefaults.standard.set(lineGap, forKey: "lineGap") } }
     @Published var updating = false
     @Published var pendingNotes: [ReleaseNote] = []
 
@@ -171,6 +173,7 @@ final class AppModel: ObservableObject {
         bgHex = d.string(forKey: "bgHex") ?? SlideStyle.black.bgHex
         openAfterExport = d.object(forKey: "openAfterExport") as? Bool ?? true
         layout = SlideLayout(rawValue: d.string(forKey: "layout") ?? "") ?? .forum
+        lineGap = d.object(forKey: "lineGap") as? Double ?? 0
         let defaultFields: [FieldSetting] = [
             .init(kind: .camera, enabled: true), .init(kind: .lens, enabled: true),
             .init(kind: .focal, enabled: true), .init(kind: .shutter, enabled: true),
@@ -289,7 +292,7 @@ final class AppModel: ObservableObject {
             let template = Bundle.main.url(forResource: "template", withExtension: "pptx")
                 ?? URL(fileURLWithPath: FileManager.default.currentDirectoryPath + "/Resources/template.pptx")
             try PPTXBuilder.build(template: template, output: out, photos: photos, fields: fields,
-                                  studentID: studentID, name: name, fonts: fonts, lineSpacing: lineSpacing, style: style, layout: layout)
+                                  studentID: studentID, name: name, fonts: fonts, lineSpacing: lineSpacing, style: style, layout: layout, lineGap: lineGap)
             photos.forEach { rememberLens($0.lens, focal: $0.focal) }
             status = "書き出しました: \(out.lastPathComponent)"
             if openAfterExport { NSWorkspace.shared.open(out) } else { NSWorkspace.shared.activateFileViewerSelecting([out]) }

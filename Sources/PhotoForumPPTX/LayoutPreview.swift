@@ -29,7 +29,7 @@ enum LayoutPreview {
         let out = dir.appendingPathComponent("preview.pptx")
         do {
             try PPTXBuilder.build(template: template, output: out, photos: photos, fields: fields, studentID: "5226C019", name: "鈴木 柾孝",
-                                  fonts: model.fonts, lineSpacing: model.lineSpacing, style: model.style, layout: layout)
+                                  fonts: model.fonts, lineSpacing: model.lineSpacing, style: model.style, layout: layout, lineGap: model.lineGap)
         } catch { return nil }
 
         let req = QLThumbnailGenerator.Request(fileAt: out, size: CGSize(width: 960, height: 540), scale: 2, representationTypes: .thumbnail)
@@ -54,7 +54,7 @@ struct LayoutSettings: View {
     @State private var twoUp = false
     @State private var image: NSImage?
 
-    private var key: String { "\(model.layout)\(twoUp)\(model.bgHex)\(model.fonts.latin)\(model.fonts.ea)\(model.lineSpacing)" }
+    private var key: String { "\(model.layout)\(twoUp)\(model.bgHex)\(model.fonts.latin)\(model.fonts.ea)\(model.lineSpacing)\(model.lineGap)" }
 
     var body: some View {
         Form {

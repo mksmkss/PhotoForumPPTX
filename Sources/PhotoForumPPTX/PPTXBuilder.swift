@@ -92,7 +92,7 @@ enum PPTXBuilder {
     static let startY = 180783
 
     static func build(template: URL, output: URL, photos: [Photo], fields: [FieldSetting],
-                      studentID: String, name: String, fonts: SlideFonts = .default, lineSpacing: Double = 1.0, style: SlideStyle = .black, layout: SlideLayout = .forum) throws {
+                      studentID: String, name: String, fonts: SlideFonts = .default, lineSpacing: Double = 1.0, style: SlideStyle = .black, layout: SlideLayout = .forum, lineGap: Double = 0) throws {
         let fm = FileManager.default
         let work = fm.temporaryDirectory.appendingPathComponent("pfp-\(UUID().uuidString)")
         defer { try? fm.removeItem(at: work) }
@@ -119,7 +119,7 @@ enum PPTXBuilder {
                 try writeJPEG(photo, to: pkg.appendingPathComponent("ppt/media/\(imgName)"))
                 rels += "<Relationship Id=\"rId\(k + 2)\" Type=\"http://schemas.openxmlformats.org/officeDocument/2006/relationships/image\" Target=\"../media/\(imgName)\"/>"
             }
-            let xml = slideXML(photos: group, fields: fields, studentID: studentID, name: name, fonts: fonts, lineSpacing: lineSpacing, style: style, layout: layout)
+            let xml = slideXML(photos: group, fields: fields, studentID: studentID, name: name, fonts: fonts, lineSpacing: lineSpacing, style: style, layout: layout, lineGap: lineGap)
             try xml.write(to: pkg.appendingPathComponent("ppt/slides/slide\(n).xml"), atomically: true, encoding: .utf8)
             let relsXML = """
             <?xml version="1.0" encoding="UTF-8" standalone="yes"?>
@@ -161,14 +161,14 @@ enum PPTXBuilder {
     }
 
     static func slideXML(photos: [Photo], fields: [FieldSetting], studentID: String, name: String, fonts: SlideFonts,
-                         lineSpacing: Double = 1.0, style: SlideStyle = .black, layout: SlideLayout = .forum) -> String {
+                         lineSpacing: Double = 1.0, style: SlideStyle = .black, layout: SlideLayout = .forum, lineGap: Double = 0) -> String {
         let panels: [Panel] = photos.count == 2 ? [.left, .right] : [.single(layout)]
         var shapes = "", id = 10
         for (i, photo) in photos.enumerated() {
             let panel = panels[i]
             shapes += pictureShape(id: 2 + i, rel: "rId\(i + 2)", photo: photo, panel: panel)
             shapes += panelShapes(photo: photo, panel: panel, identity: i == photos.count - 1, fields: fields,
-                                  studentID: studentID, name: name, fonts: fonts, lineSpacing: lineSpacing, style: style, layout: layout, id: &id)
+                                  studentID: studentID, name: name, fonts: fonts, lineSpacing: lineSpacing, style: style, layout: layout, lineGap: lineGap, id: &id)
         }
         return """
         <?xml version="1.0" encoding="UTF-8" standalone="yes"?>
@@ -191,10 +191,10 @@ enum PPTXBuilder {
     /// 撮影情報はテンプレート通り赤線を境に下部へ固定する(カメラ・レンズが線の上、露出が線の下)。
     /// identity=false の列には学籍番号・氏名を出さない(2段組みの左側)
     static func panelShapes(photo: Photo, panel: Panel, identity: Bool, fields: [FieldSetting], studentID: String, name: String,
-                            fonts: SlideFonts, lineSpacing: Double, style: SlideStyle, layout: SlideLayout, id: inout Int) -> String {
+                            fonts: SlideFonts, lineSpacing: Double, style: SlideStyle, layout: SlideLayout, lineGap: Double, id: inout Int) -> String {
         if layout == .compact {
             return compactPanelShapes(photo: photo, panel: panel, identity: identity, fields: fields, studentID: studentID, name: name,
-                                      fonts: fonts, lineSpacing: lineSpacing, style: style, id: &id)
+                                      fonts: fonts, lineSpacing: lineSpacing, style: style, lineGap: lineGap, id: &id)
         }
         var shapes = ""
         func height(_ k: FieldKind, _ text: String) -> Int {
@@ -229,7 +229,7 @@ enum PPTXBuilder {
                 let y = edge + inset - height(k, t)
                 emit(k, t, y: y); edge = y + inset
             }
-            let down = lineY + 30000 - inset
+            let down = lineY + 30000 - inset + Int(lineGap * 12700)     // 赤線と文字の間隔(調整分)
             if !lower.isEmpty {                          // 線の下は1つのテキストボックスにまとめ、左寄せ
                 let h = lowerHeight(lower, spacing: lineSpacing, width: panel.lowerW, pad: Double(panel.lowerInsets.l + panel.lowerInsets.r) / 12700)
                 shapes += lowerShape(id: id, y: down, h: h, items: lower, x: panel.lowerX, w: panel.lowerW, insets: panel.lowerInsets, fonts: fonts, spacing: lineSpacing, color: style.textHex); id += 1
@@ -240,7 +240,7 @@ enum PPTXBuilder {
 
     /// コンパクト: 個人情報は上、カメラ名(12pt)→レンズ名(7pt)→赤線→SS/焦点距離/F値/ISO(7pt・左寄せ)を下部にまとめる
     static func compactPanelShapes(photo: Photo, panel: Panel, identity: Bool, fields: [FieldSetting], studentID: String, name: String,
-                                   fonts: SlideFonts, lineSpacing: Double, style: SlideStyle, id: inout Int) -> String {
+                                   fonts: SlideFonts, lineSpacing: Double, style: SlideStyle, lineGap: Double, id: inout Int) -> String {
         let layout = SlideLayout.compact
         var shapes = ""
         func lines(_ k: FieldKind, _ t: String) -> Int { estimateLines(t, size: layout.fontSize(k), width: panel.colW) }
@@ -285,7 +285,7 @@ enum PPTXBuilder {
         }
         if !list.isEmpty {
             let h = Int(list.reduce(0.0) { $0 + body($1.0, $1.1) * lineSpacing }) + 91440
-            shapes += lowerShape(id: id, y: 4525086, h: h, items: list, x: panel.lowerX, w: panel.lowerW, insets: panel.lowerInsets,
+            shapes += lowerShape(id: id, y: 4525086 + Int(lineGap * 12700), h: h, items: list, x: panel.lowerX, w: panel.lowerW, insets: panel.lowerInsets,
                                  fonts: fonts, spacing: lineSpacing, color: style.textHex, layout: layout); id += 1
         }
         return shapes

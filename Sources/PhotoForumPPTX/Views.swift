@@ -449,32 +449,41 @@ extension Color {
     }
 }
 
-/// 撮影情報ボックス(Shutter Speed / Aperture / ISO)の行間。デモテキストで見ながら調整する
+/// 撮影情報ボックス(Shutter Speed / Aperture / ISO)の行間と、赤線との間隔。デモテキストで見ながら調整する
 struct SpacingSettings: View {
     @EnvironmentObject var model: AppModel
-    private let demo: [(String, Double)] = [
-        ("Shutter Speed: 1/800 sec", 7.5), ("Aperture: f/2.8", 7.5), ("ISO: 400", 7.5), ("Step Crop", 7.5),
-    ]
+    private let demo = ["Shutter Speed: 1/800 sec", "Aperture: f/2.8", "ISO: 400", "Step Crop"]
+    private let scale = 1.6          // スライド上の7.5ptを画面で見やすく拡大
 
     var body: some View {
         Form {
             HStack {
+                Text("行間").frame(width: 80, alignment: .leading)
                 Slider(value: $model.lineSpacing, in: 0.8...2.0, step: 0.05)
                 Text("\(Int((model.lineSpacing * 100).rounded()))%").monospacedDigit().frame(width: 48, alignment: .trailing)
             }
-            // スライドの撮影情報ボックスと同じ見た目(黒背景・白文字・左寄せ)。1pt=1.6倍に拡大して表示
+            HStack {
+                Text("赤線との間隔").frame(width: 80, alignment: .leading)
+                Slider(value: $model.lineGap, in: -4...12, step: 0.5)
+                Text(String(format: "%+.1fpt", model.lineGap)).monospacedDigit().frame(width: 48, alignment: .trailing)
+            }
+            // スライドの撮影情報ボックスと同じ見た目(背景色・文字色は設定どおり、左寄せ)
             VStack(alignment: .leading, spacing: 0) {
-                ForEach(demo, id: \.0) { t, size in
-                    Text(t).font(.custom(model.fonts.latin, size: size * 1.6))
-                        .frame(minHeight: size * 1.6 * 1.2 * model.lineSpacing, alignment: .leading)
+                Rectangle().fill(Color(red: 1, green: 0.4, blue: 0)).frame(height: 1.5)
+                Color.clear.frame(height: max(0, (4.9 + model.lineGap) * scale))
+                ForEach(demo, id: \.self) { t in
+                    Text(t).font(.custom(model.fonts.latin, size: 7.5 * scale))
+                        .frame(minHeight: 7.5 * scale * 1.2 * model.lineSpacing, alignment: .leading)
                 }
             }
-            .foregroundStyle(.white).padding(8).frame(width: 220, alignment: .leading).background(.black)
+            .foregroundStyle(Color(hex: model.style.textHex)).padding(.horizontal, 12).padding(.vertical, 10)
+            .frame(width: 240, alignment: .leading).background(Color(hex: model.bgHex))
+            .overlay(Rectangle().stroke(Color.secondary.opacity(0.4)))
             HStack {
-                Button("100%に戻す") { model.lineSpacing = 1.0 }
+                Button("標準に戻す") { model.lineSpacing = 1.0; model.lineGap = 0 }
                 Spacer()
             }
-            Text("線の下の撮影情報(Shutter Speed / Aperture / ISO / 備考)を1つのテキストボックスにまとめ、その中の行間を指定します。")
+            Text("線の下の撮影情報(Shutter Speed / Aperture / ISO / 備考)は1つのテキストボックスにまとまっています。その中の行間と、赤線との間隔を指定します。")
                 .font(.caption).foregroundStyle(.secondary)
         }
         .padding()

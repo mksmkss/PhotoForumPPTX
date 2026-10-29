@@ -12,6 +12,7 @@
         <local:InverseBooleanToVisibilityConverter x:Key="InverseBoolToVis" />
         <local:ThumbnailConverter x:Key="ThumbnailConverter" />
         <local:NullToVisibilityConverter x:Key="NullToVisibilityConverter" />
+        <local:StringToVisibilityConverter x:Key="StringToVisibilityConverter" />
     </Window.Resources>
     <Grid>
         <Grid.RowDefinitions>
@@ -34,8 +35,11 @@
         <Border x:Name="UpdateBanner" Grid.Row="1" Padding="10" Background="#DCEBFC"
                 Visibility="{Binding Available, Converter={StaticResource NullToVisibilityConverter}}">
             <DockPanel>
-                <TextBlock DockPanel.Dock="Left" VerticalAlignment="Center"
-                           Text="{Binding Available.Version, StringFormat=新しい版 v{0} があります}" />
+                <StackPanel DockPanel.Dock="Left" VerticalAlignment="Center">
+                    <TextBlock Text="{Binding Available.Version, StringFormat=新しい版 v{0} があります}" />
+                    <TextBlock Text="{Binding Status}" Foreground="#A00000" FontSize="11"
+                               Visibility="{Binding Status, Converter={StaticResource StringToVisibilityConverter}}" />
+                </StackPanel>
                 <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" HorizontalAlignment="Right"
                             Visibility="{Binding Installing, Converter={StaticResource InverseBoolToVis}}">
                     <Button Content="あとで" Command="{Binding DismissCommand}" Padding="8,4" Margin="0,0,8,0" />

@@ -22,11 +22,16 @@ public sealed class WindowsUpdateInstaller : IUpdateInstaller
         Directory.CreateDirectory(work);
 
         var zipPath = Path.Combine(work, "update.zip");
-        using (var http = new HttpClient { Timeout = TimeSpan.FromSeconds(120) })
+        // GitHub Releasesのアセットは初回アクセス時にCDNへの配信が遅いことがあるため、
+        // ダウンロードには余裕を持ったタイムアウトを設定する(数十MB規模のzipを想定)
+        using (var http = new HttpClient { Timeout = TimeSpan.FromMinutes(10) })
         {
             http.DefaultRequestHeaders.UserAgent.Add(new ProductInfoHeaderValue("PhotoForumPPTX-Windows", AppInfo.Version));
-            var bytes = await http.GetByteArrayAsync(zipUrl);
-            await File.WriteAllBytesAsync(zipPath, bytes);
+            using var response = await http.GetAsync(zipUrl, HttpCompletionOption.ResponseHeadersRead);
+            response.EnsureSuccessStatusCode();
+            await using var responseStream = await response.Content.ReadAsStreamAsync();
+            await using var fileStream = File.Create(zipPath);
+            await responseStream.CopyToAsync(fileStream);
         }
 
         var extractDir = Path.Combine(work, "extracted");

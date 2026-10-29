@@ -36,9 +36,15 @@
             <DockPanel>
                 <TextBlock DockPanel.Dock="Left" VerticalAlignment="Center"
                            Text="{Binding Available.Version, StringFormat=新しい版 v{0} があります}" />
-                <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" HorizontalAlignment="Right">
+                <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" HorizontalAlignment="Right"
+                            Visibility="{Binding Installing, Converter={StaticResource InverseBoolToVis}}">
                     <Button Content="あとで" Command="{Binding DismissCommand}" Padding="8,4" Margin="0,0,8,0" />
-                    <Button Content="リリースページを開く" Click="OnOpenReleasePageClick" Padding="8,4" FontWeight="Bold" />
+                    <Button Content="今すぐ更新" Command="{Binding InstallCommand}" Padding="8,4" FontWeight="Bold" />
+                </StackPanel>
+                <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" HorizontalAlignment="Right"
+                            Visibility="{Binding Installing, Converter={StaticResource BoolToVis}}">
+                    <ProgressBar IsIndeterminate="True" Width="80" Height="14" Margin="0,0,8,0" VerticalAlignment="Center" />
+                    <TextBlock Text="更新中…" VerticalAlignment="Center" />
                 </StackPanel>
             </DockPanel>
         </Border>

@@ -7,6 +7,7 @@ namespace PhotoForumPPTX.Gui;
 public sealed partial class UpdateViewModel : ObservableObject
 {
     private readonly IReleaseFeed _feed;
+    private readonly IUpdateInstaller _installer;
 
     [ObservableProperty]
     private UpdateCheck.Found? _available;
@@ -17,7 +18,14 @@ public sealed partial class UpdateViewModel : ObservableObject
     [ObservableProperty]
     private bool _checking;
 
-    public UpdateViewModel(IReleaseFeed feed) => _feed = feed;
+    [ObservableProperty]
+    private bool _installing;
+
+    public UpdateViewModel(IReleaseFeed feed, IUpdateInstaller installer)
+    {
+        _feed = feed;
+        _installer = installer;
+    }
 
     /// <summary>起動時などの自動チェックから直接呼べる本体(manual=trueのときだけ「最新です」等もStatusに出す)</summary>
     public async Task CheckAsync(bool manual = false)
@@ -45,4 +53,24 @@ public sealed partial class UpdateViewModel : ObservableObject
 
     [RelayCommand]
     private void Dismiss() => Available = null;
+
+    [RelayCommand]
+    private async Task Install()
+    {
+        if (Available is not { } found || Installing) return;
+        Installing = true;
+        Status = "";
+        try
+        {
+            await _installer.InstallAsync(found.ZipUrl);
+        }
+        catch (Exception ex)
+        {
+            Status = $"更新に失敗しました: {ex.Message}";
+        }
+        finally
+        {
+            Installing = false;
+        }
+    }
 }

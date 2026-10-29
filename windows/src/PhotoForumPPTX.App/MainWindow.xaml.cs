@@ -27,7 +27,7 @@ public partial class MainWindow : Window
         _settings.LastSeenVersion = lastSeenToPersist;
         AppSettingsStore.Save(_settings);
 
-        _updateViewModel = new UpdateViewModel(new GitHubReleaseFeed());
+        _updateViewModel = new UpdateViewModel(new GitHubReleaseFeed(), new WindowsUpdateInstaller());
         UpdateBanner.DataContext = _updateViewModel;
 
         _settingsViewModel = new SettingsViewModel(_settings, cameras, lenses, new WpfFontCatalog(), _updateViewModel);
@@ -67,11 +67,6 @@ public partial class MainWindow : Window
         UrlOpener.Open(Links.NewIssueUrl(Environment.OSVersion.VersionString));
 
     private void OnOpenRepoClick(object sender, RoutedEventArgs e) => UrlOpener.Open(Links.RepoUrl);
-
-    private void OnOpenReleasePageClick(object sender, RoutedEventArgs e)
-    {
-        if (_updateViewModel.Available is { } found) UrlOpener.Open(Links.ReleaseTagUrl(found.Version));
-    }
 
     private void OnDragOver(object sender, DragEventArgs e)
     {

@@ -132,7 +132,11 @@ struct PhotoRow: View {
                 if let t = photo.thumbnail { Image(nsImage: t).resizable().scaledToFit() } else { Color.gray }
             }.frame(width: 110, height: 80).background(Color.black)
             VStack(alignment: .leading, spacing: 4) {
-                Text(photo.url.lastPathComponent).font(.caption).foregroundStyle(.secondary)
+                HStack {
+                    Text(photo.url.lastPathComponent).font(.caption).foregroundStyle(.secondary)
+                    Spacer()
+                    Toggle("次の写真と2段組み", isOn: $photo.pairWithNext).toggleStyle(.checkbox).font(.caption).disabled(!canPair)
+                }
                 if model.fields.first(where: { $0.kind == .title })?.enabled == true {
                     TextField("作品タイトル", text: $photo.title)
                 }
@@ -149,6 +153,12 @@ struct PhotoRow: View {
             }
             Button(role: .destructive, action: onRemove) { Image(systemName: "xmark.circle") }.buttonStyle(.borderless)
         }.padding(.vertical, 4)
+    }
+
+    /// 次の写真があり、自分が前の写真の2段組みの相方(右側)になっていないときだけ有効
+    var canPair: Bool {
+        guard let i = model.photos.firstIndex(where: { $0.id == photo.id }), i + 1 < model.photos.count else { return false }
+        return i == 0 || !model.photos[i - 1].pairWithNext || photo.pairWithNext
     }
 
     /// 対応表の表示名(カメラは「表示名 / 型番」)
@@ -185,6 +195,7 @@ struct SettingsView: View {
                         keyLabel: "EXIFのレンズ名", valueLabel: "表示名", table: model.lenses)
                 .tabItem { Label("レンズ名", systemImage: "camera.aperture") }
             FontSettings().tabItem { Label("フォント", systemImage: "textformat") }
+            BackgroundSettings().tabItem { Label("背景", systemImage: "paintpalette") }
             SpacingSettings().tabItem { Label("行間", systemImage: "text.alignleft") }
             AboutSettings().tabItem { Label("情報", systemImage: "info.circle") }
         }
@@ -300,6 +311,56 @@ struct FontSettings: View {
         }
         .padding()
         .frame(maxHeight: .infinity, alignment: .top)
+    }
+}
+
+/// スライドの背景色。文字色は背景の明るさから自動で白/黒になる
+struct BackgroundSettings: View {
+    @EnvironmentObject var model: AppModel
+
+    private var color: Binding<Color> {
+        Binding(
+            get: { Color(hex: model.bgHex) },
+            set: { model.bgHex = $0.hex }
+        )
+    }
+
+    var body: some View {
+        Form {
+            HStack {
+                Button("黒") { model.bgHex = SlideStyle.black.bgHex }
+                Button("ライトグレー") { model.bgHex = SlideStyle.lightGray.bgHex }
+                ColorPicker("カスタム", selection: color, supportsOpacity: false)
+                Spacer()
+                Text("#\(model.bgHex)").monospaced().foregroundStyle(.secondary)
+            }
+            // プレビュー(実際のスライドの文字色)
+            VStack(spacing: 4) {
+                Text("5226C019").font(.system(size: 17))
+                Text("α1 II / ILCE-1M2").font(.system(size: 13))
+                Text("Shutter Speed: 1/800 sec").font(.system(size: 12))
+            }
+            .foregroundStyle(Color(hex: model.style.textHex))
+            .frame(maxWidth: .infinity, minHeight: 130)
+            .background(Color(hex: model.bgHex))
+            .overlay(Rectangle().stroke(Color.secondary.opacity(0.4)))
+            Text("カラーパネルの「スライダー」タブでRGB・CMYKの数値を指定でき、「カラーパレット」などから選ぶこともできます。文字色は背景が明るいと黒、暗いと白に自動で切り替わります。")
+                .font(.caption).foregroundStyle(.secondary)
+        }
+        .padding()
+        .frame(maxHeight: .infinity, alignment: .top)
+    }
+}
+
+extension Color {
+    init(hex: String) {
+        let v = Int(hex, radix: 16) ?? 0
+        self.init(.sRGB, red: Double((v >> 16) & 255) / 255, green: Double((v >> 8) & 255) / 255, blue: Double(v & 255) / 255)
+    }
+    /// sRGBに変換したRRGGBB
+    var hex: String {
+        let c = NSColor(self).usingColorSpace(.sRGB) ?? .black
+        return String(format: "%02X%02X%02X", Int((c.redComponent * 255).rounded()), Int((c.greenComponent * 255).rounded()), Int((c.blueComponent * 255).rounded()))
     }
 }
 

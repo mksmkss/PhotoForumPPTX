@@ -56,6 +56,8 @@ final class Photo: ObservableObject, Identifiable {
     let pixelSize: CGSize      // 向き補正後
     let orientation: Int
 
+    /// 次の写真と同じスライドに2段組みで並べる
+    @Published var pairWithNext = false
     @Published var title = ""
     @Published var camera = ""
     @Published var lens = ""
@@ -135,6 +137,9 @@ final class AppModel: ObservableObject {
     @Published var fonts: SlideFonts { didSet { saveFonts() } }
     /// 撮影情報ボックスの行間(1.0 = 100%)
     @Published var lineSpacing: Double { didSet { UserDefaults.standard.set(lineSpacing, forKey: "lineSpacing") } }
+    /// スライドの背景色(RRGGBB)。文字色は明るさから自動で決まる
+    @Published var bgHex: String { didSet { UserDefaults.standard.set(bgHex, forKey: "bgHex") } }
+    var style: SlideStyle { SlideStyle(bgHex: bgHex) }
     @Published var updating = false
     @Published var pendingNotes: [ReleaseNote] = []
 
@@ -155,6 +160,7 @@ final class AppModel: ObservableObject {
         fonts = SlideFonts(latin: d.string(forKey: "fontLatin") ?? SlideFonts.default.latin,
                            ea: d.string(forKey: "fontEA") ?? SlideFonts.default.ea)
         lineSpacing = d.object(forKey: "lineSpacing") as? Double ?? 1.0
+        bgHex = d.string(forKey: "bgHex") ?? SlideStyle.black.bgHex
         let defaultFields: [FieldSetting] = [
             .init(kind: .camera, enabled: true), .init(kind: .lens, enabled: true),
             .init(kind: .focal, enabled: true), .init(kind: .shutter, enabled: true),
@@ -220,7 +226,7 @@ final class AppModel: ObservableObject {
             let template = Bundle.main.url(forResource: "template", withExtension: "pptx")
                 ?? URL(fileURLWithPath: FileManager.default.currentDirectoryPath + "/Resources/template.pptx")
             try PPTXBuilder.build(template: template, output: out, photos: photos, fields: fields,
-                                  studentID: studentID, name: name, fonts: fonts, lineSpacing: lineSpacing)
+                                  studentID: studentID, name: name, fonts: fonts, lineSpacing: lineSpacing, style: style)
             status = "書き出しました: \(out.lastPathComponent)"
             NSWorkspace.shared.activateFileViewerSelecting([out])
         } catch {

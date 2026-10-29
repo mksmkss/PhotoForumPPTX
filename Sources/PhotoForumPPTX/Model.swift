@@ -144,6 +144,8 @@ final class AppModel: ObservableObject {
     @Published var openAfterExport: Bool { didSet { UserDefaults.standard.set(openAfterExport, forKey: "openAfterExport") } }
     /// 情報欄のデザイン
     @Published var layout: SlideLayout { didSet { UserDefaults.standard.set(layout.rawValue, forKey: "layout") } }
+    /// 手入力したレンズ名(マニュアルレンズなど)。一度入れたら候補に出す
+    @Published var rememberedLenses: [String] = UserDefaults.standard.stringArray(forKey: "rememberedLenses") ?? []
     @Published var updating = false
     @Published var pendingNotes: [ReleaseNote] = []
 
@@ -205,6 +207,16 @@ final class AppModel: ObservableObject {
         d.set(studentID, forKey: "studentID")
         d.set(name, forKey: "name")
         if let data = try? JSONEncoder().encode(fields) { d.set(data, forKey: "fields") }
+    }
+
+    /// レンズ名を覚える(新しい順・重複なし・最大50件)。対応表にある名前は覚えない
+    func rememberLens(_ name: String) {
+        let t = name.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !t.isEmpty, !lenses.entries.contains(where: { $0.value == t }) else { return }
+        rememberedLenses.removeAll { $0 == t }
+        rememberedLenses.insert(t, at: 0)
+        if rememberedLenses.count > 50 { rememberedLenses.removeLast() }
+        UserDefaults.standard.set(rememberedLenses, forKey: "rememberedLenses")
     }
 
     func remove(_ id: UUID) { _ = detach(id) }
@@ -274,6 +286,7 @@ final class AppModel: ObservableObject {
                 ?? URL(fileURLWithPath: FileManager.default.currentDirectoryPath + "/Resources/template.pptx")
             try PPTXBuilder.build(template: template, output: out, photos: photos, fields: fields,
                                   studentID: studentID, name: name, fonts: fonts, lineSpacing: lineSpacing, style: style, layout: layout)
+            photos.forEach { rememberLens($0.lens) }
             status = "書き出しました: \(out.lastPathComponent)"
             if openAfterExport { NSWorkspace.shared.open(out) } else { NSWorkspace.shared.activateFileViewerSelecting([out]) }
         } catch {

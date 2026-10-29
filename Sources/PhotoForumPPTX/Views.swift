@@ -201,12 +201,12 @@ struct PhotoRow: View {
                 }
                 if compact {
                     suggestField("カメラ", $photo.camera, cameraCandidates)
-                    SuggestField(label: "レンズ", text: $photo.lens, candidates: lensCandidates, allowsBreak: true)
+                    SuggestField(label: "レンズ", text: $photo.lens, candidates: lensCandidates, allowsBreak: true, onCommit: model.rememberLens)
                     HStack { field("焦点距離(mm)", $photo.focal); field("SS", $photo.shutter) }
                     HStack { field("F", $photo.aperture); field("ISO", $photo.iso) }
                 } else {
                     Grid(alignment: .leading, horizontalSpacing: 6, verticalSpacing: 3) {
-                        GridRow { suggestField("カメラ", $photo.camera, cameraCandidates); SuggestField(label: "レンズ", text: $photo.lens, candidates: lensCandidates, allowsBreak: true) }
+                        GridRow { suggestField("カメラ", $photo.camera, cameraCandidates); SuggestField(label: "レンズ", text: $photo.lens, candidates: lensCandidates, allowsBreak: true, onCommit: model.rememberLens) }
                         GridRow {
                             HStack { field("焦点距離(mm)", $photo.focal); field("SS", $photo.shutter) }
                             HStack { field("F", $photo.aperture); field("ISO", $photo.iso) }
@@ -227,7 +227,7 @@ struct PhotoRow: View {
     /// 対応表の表示名 + 今読み込んでいる写真のEXIFレンズ名(重複除く)
     var lensCandidates: [String] {
         var out: [String] = []
-        for c in model.lenses.entries.map(\.value) + model.photos.map(\.lens) where !c.isEmpty && !out.contains(c) { out.append(c) }
+        for c in model.lenses.entries.map(\.value) + model.rememberedLenses + model.photos.map(\.lens) where !c.isEmpty && !out.contains(c) { out.append(c) }
         return out
     }
 
@@ -299,6 +299,8 @@ struct SuggestField: View {
     let candidates: [String]
     /// レンズ名など、改行(2段表示)を入れられる欄
     var allowsBreak = false
+    /// 入力が終わった(フォーカスが外れた)とき
+    var onCommit: (String) -> Void = { _ in }
     @FocusState private var focused: Bool
     @State private var open = false
 
@@ -339,6 +341,7 @@ struct SuggestField: View {
         }
         .onChange(of: focused) { f in
             if f { open = true } else {
+                onCommit(text)
                 // クリックで候補を選べるよう、フォーカスが外れてから少し待って閉じる
                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) { if !focused { open = false } }
             }

@@ -50,6 +50,7 @@ Start-Process "$dest\PhotoForumPPTX.App.exe"
 ```
 
 - .NET のインストールは不要です(自己完結パッケージ)。
+- アプリが起動中なら、先に終了してから実行してください。
 - 初回起動時に「Windows によって PC が保護されました」と出ることがあります(未署名アプリのため)。「詳細情報」→「実行」で起動できます。
 - デスクトップにショートカットが欲しい場合は、`%LocalAppData%\Programs\PhotoForumPPTX\PhotoForumPPTX.App.exe` を右クリックして「ショートカットの作成」してください。
 - ネットワークを使わずzipを直接受け取った場合は、[`windows/install.ps1`](windows/install.ps1) と `PhotoForumPPTX-win.zip` を同じフォルダに置いて次を実行します。

@@ -7,6 +7,10 @@ public static class ReleaseNotes
 {
     public static readonly IReadOnlyList<ReleaseNote> All = new[]
     {
+        new ReleaseNote("1.0", new[]
+        {
+            "Windows版の最初の正式版です(Mac版v1.6相当の機能に対応)",
+        }),
         new ReleaseNote("0.3", new[]
         {
             "アップデートのダウンロードが途中で失敗しにくいよう、タイムアウトを延長しました",

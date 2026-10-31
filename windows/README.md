@@ -63,8 +63,10 @@ dotnet run --project src/PhotoForumPPTX.App   # 実行
 # 3. ビルドしてリリース
 cd windows
 ./build.ps1
-gh release create win-v0.4 dist/PhotoForumPPTX-win.zip --title "Windows v0.4" --notes "変更点" --target windows-core
+gh release create win-v1.1 dist/PhotoForumPPTX-win.zip --title "Windows v1.1" --notes "変更点" --target main --prerelease
 ```
+
+`--prerelease` は必須です。付け忘れると `win-v*` がリポジトリの最新リリースになり、Mac版のインストールコマンド(`releases/latest/download/PhotoForumPPTX.zip`)が404になります。
 
 アプリは GitHub Releases の`win-v`で始まるタグのうち最新のものと自身のバージョンを比べて、
 新しければ `PhotoForumPPTX-win.zip` を取得します(Mac版の`v`タグとは別系統)。
@@ -84,5 +86,7 @@ gh release create win-v0.4 dist/PhotoForumPPTX-win.zip --title "Windows v0.4" --
 
 ## Mac版との違い・制約
 
+- 対応範囲はMac版v1.6相当と、書き出し後の自動オープンまで。v2.0の2段組み・背景色・レイアウト選択・レンズ記憶は未対応。
+- zipからのアップデート(zipのドロップ・選択)は未対応。アプリ内のオンライン自動更新を使う。
 - 画像デコードは`System.Drawing.Common`(Windows専用、GDI+)を使用。HEIC/RAWは非対応(JPEG/PNG/TIFF等のGDI+対応形式のみ)。EXIF自体は`MetadataExtractor`で読むためHEICでも値は取れるが、スライドに貼る画像の再エンコードが必要な場合(向き補正が必要な非JPEG)は失敗する。
 - 未署名アプリのため、初回起動時にSmartScreenの警告が出る(コード署名証明書が無いため回避不可)。

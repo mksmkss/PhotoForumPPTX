@@ -1,4 +1,4 @@
-# zip(PhotoForumPPTX-win.zip)を受け取った人向け:
+﻿# zip(PhotoForumPPTX-win.zip)を受け取った人向け:
 # このスクリプトとzipを同じフォルダに置いて、PowerShellで次を実行してください
 #   powershell -ExecutionPolicy Bypass -File install.ps1
 # ダウンロードしたファイルに付く「インターネットからのファイルです」マークを外してから

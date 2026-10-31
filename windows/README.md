@@ -4,34 +4,9 @@
 「写真表現Ⅰ 写真投稿フォーラム」テンプレートの書式で pptx を作る Windows アプリ。
 Mac版(`Sources/`, `Resources/`)の核心機能を .NET 8 / WPF に移植したもの。
 
-## インストール(配布を受ける人向け)
+## インストール・アップデート
 
-PowerShellを開いて、次のコマンドをまとめて貼り付けてEnterするだけです。
-最新版のダウンロード → `%LocalAppData%\Programs\PhotoForumPPTX` に配置 → 起動 まで自動で行います(環境構築は不要)。
-
-```powershell
-$r = (Invoke-RestMethod "https://api.github.com/repos/mksmkss/PhotoForumPPTX/releases") | Where-Object { $_.tag_name -like "win-v*" } | Select-Object -First 1
-$asset = $r.assets | Where-Object { $_.name -eq "PhotoForumPPTX-win.zip" }
-$dest = "$env:LOCALAPPDATA\Programs\PhotoForumPPTX"
-if (Test-Path $dest) { Remove-Item -Recurse -Force $dest }
-Invoke-WebRequest $asset.browser_download_url -OutFile "$env:TEMP\PhotoForumPPTX-win.zip"
-Expand-Archive "$env:TEMP\PhotoForumPPTX-win.zip" -DestinationPath $dest -Force
-Get-ChildItem $dest -Recurse | Unblock-File
-Start-Process "$dest\PhotoForumPPTX.App.exe"
-```
-
-- 動作環境: Windows 10/11 (64bit)。.NET のインストールは不要(自己完結パッケージ)。
-- 初回起動時に「Windows によって PC が保護されました」と出ることがあります(未署名アプリのため)。「詳細情報」→「実行」で起動できます。
-- デスクトップにショートカットが欲しい場合は、`%LocalAppData%\Programs\PhotoForumPPTX\PhotoForumPPTX.App.exe` を右クリックして「ショートカットの作成」してください。
-- ネットワークを使わずzipを直接受け取った場合は、`install.ps1` と `PhotoForumPPTX-win.zip` を同じフォルダに置いて次を実行します。
-  ```powershell
-  powershell -ExecutionPolicy Bypass -File install.ps1
-  ```
-
-## アップデート(すでに入れている人)
-
-新しい版が出ると、起動時に上部にバナーが出ます。「今すぐ更新」を押すだけで、ダウンロード → 入れ替え → 再起動まで自動です。
-メニュー「ヘルプ → 新機能(更新履歴)」でこれまでの変更点を見返せます。設定 → 情報タブでも手動確認できます。
+[ルートのREADME](../README.md#windowsユーザー)を参照してください。
 
 ## 使い方
 

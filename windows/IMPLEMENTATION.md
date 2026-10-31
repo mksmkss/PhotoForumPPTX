@@ -29,7 +29,7 @@ Mac版は SwiftUI / AppKit / ImageIO という macOS専用フレームワーク�
 ```
 windows/
   PhotoForumPPTX.sln
-  README.md              配布・使い方・ビルド・リリース手順
+  README.md              使い方・ビルド・リリース手順
   IMPLEMENTATION.md       このファイル
   build.ps1               発行してdist/PhotoForumPPTX-win.zipを作る
   install.ps1              zipを直接受け取った人向けのオフラインインストーラー
@@ -119,7 +119,7 @@ Mac版は`releases/latest`を参照するため、`win-v`のリリースは**必
 
 ## 配布
 
-- **オンライン1行インストール**(README記載): PowerShellに貼り付けるだけで、GitHub APIで`win-v`タグの最新リリースを検索 → ダウンロード → `%LocalAppData%\Programs\PhotoForumPPTX`に展開 → 起動(管理者権限不要)。Mac版のcurl一行インストールと同じ思想。実機で動作確認済み。
+- **オンライン1行インストール**(ルートのREADME記載): PowerShellに貼り付けるだけで、GitHub APIで`win-v`タグの最新リリースを検索 → ダウンロード → `%LocalAppData%\Programs\PhotoForumPPTX`に展開 → 起動(管理者権限不要)。Mac版のcurl一行インストールと同じ思想。実機で動作確認済み。
 - **オフラインインストール**(`install.ps1`): zipを直接受け取った人向け。`Unblock-File`で「インターネットからのファイルです」マーク(Mark of the Web)を外してから展開・起動する(Mac版`install.sh`の隔離属性除去に相当)。
 - **ビルド**(`build.ps1`): `dotnet publish`で自己完結・単一ファイル・win-x64発行し、`dist/PhotoForumPPTX-win.zip`を作る。Mac版`build.sh`と同じ構造。
 - 未署名アプリのため、初回起動時にSmartScreenの警告(「Windows によって PC が保護されました」)が出る。コード署名証明書が無いため回避はできず、README/HelpViewで案内するに留める。

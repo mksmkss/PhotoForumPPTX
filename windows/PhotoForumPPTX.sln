@@ -1,0 +1,64 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.0.31903.59
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "src", "src", "{0772A527-049F-440D-9832-6633B42E2B23}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "PhotoForumPPTX.Core", "src\PhotoForumPPTX.Core\PhotoForumPPTX.Core.csproj", "{EAB4B556-439A-4D67-B7DE-A9554293C7CE}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "PhotoForumPPTX.Cli", "src\PhotoForumPPTX.Cli\PhotoForumPPTX.Cli.csproj", "{17D60D42-A36F-49FD-8097-9A6E60495682}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "tests", "tests", "{764A824A-202A-4C35-AB2D-EDE7B3936184}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "PhotoForumPPTX.Core.Tests", "tests\PhotoForumPPTX.Core.Tests\PhotoForumPPTX.Core.Tests.csproj", "{B5464FCA-68CA-4241-9892-CEFE39FEEAF5}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "PhotoForumPPTX.Gui", "src\PhotoForumPPTX.Gui\PhotoForumPPTX.Gui.csproj", "{1E15A20F-3DD5-4D5F-B51D-16EF31959D43}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "PhotoForumPPTX.App", "src\PhotoForumPPTX.App\PhotoForumPPTX.App.csproj", "{E59B5FD4-0A82-4540-9A1D-E7E30F0FE08E}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "PhotoForumPPTX.Gui.Tests", "tests\PhotoForumPPTX.Gui.Tests\PhotoForumPPTX.Gui.Tests.csproj", "{27C7192F-A024-42DD-A16C-16EFA0A64CB5}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{EAB4B556-439A-4D67-B7DE-A9554293C7CE}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{EAB4B556-439A-4D67-B7DE-A9554293C7CE}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{EAB4B556-439A-4D67-B7DE-A9554293C7CE}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{EAB4B556-439A-4D67-B7DE-A9554293C7CE}.Release|Any CPU.Build.0 = Release|Any CPU
+		{17D60D42-A36F-49FD-8097-9A6E60495682}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{17D60D42-A36F-49FD-8097-9A6E60495682}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{17D60D42-A36F-49FD-8097-9A6E60495682}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{17D60D42-A36F-49FD-8097-9A6E60495682}.Release|Any CPU.Build.0 = Release|Any CPU
+		{B5464FCA-68CA-4241-9892-CEFE39FEEAF5}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{B5464FCA-68CA-4241-9892-CEFE39FEEAF5}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{B5464FCA-68CA-4241-9892-CEFE39FEEAF5}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{B5464FCA-68CA-4241-9892-CEFE39FEEAF5}.Release|Any CPU.Build.0 = Release|Any CPU
+		{1E15A20F-3DD5-4D5F-B51D-16EF31959D43}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{1E15A20F-3DD5-4D5F-B51D-16EF31959D43}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{1E15A20F-3DD5-4D5F-B51D-16EF31959D43}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{1E15A20F-3DD5-4D5F-B51D-16EF31959D43}.Release|Any CPU.Build.0 = Release|Any CPU
+		{E59B5FD4-0A82-4540-9A1D-E7E30F0FE08E}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{E59B5FD4-0A82-4540-9A1D-E7E30F0FE08E}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{E59B5FD4-0A82-4540-9A1D-E7E30F0FE08E}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{E59B5FD4-0A82-4540-9A1D-E7E30F0FE08E}.Release|Any CPU.Build.0 = Release|Any CPU
+		{27C7192F-A024-42DD-A16C-16EFA0A64CB5}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{27C7192F-A024-42DD-A16C-16EFA0A64CB5}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{27C7192F-A024-42DD-A16C-16EFA0A64CB5}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{27C7192F-A024-42DD-A16C-16EFA0A64CB5}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(NestedProjects) = preSolution
+		{EAB4B556-439A-4D67-B7DE-A9554293C7CE} = {0772A527-049F-440D-9832-6633B42E2B23}
+		{17D60D42-A36F-49FD-8097-9A6E60495682} = {0772A527-049F-440D-9832-6633B42E2B23}
+		{B5464FCA-68CA-4241-9892-CEFE39FEEAF5} = {764A824A-202A-4C35-AB2D-EDE7B3936184}
+		{1E15A20F-3DD5-4D5F-B51D-16EF31959D43} = {0772A527-049F-440D-9832-6633B42E2B23}
+		{E59B5FD4-0A82-4540-9A1D-E7E30F0FE08E} = {0772A527-049F-440D-9832-6633B42E2B23}
+		{27C7192F-A024-42DD-A16C-16EFA0A64CB5} = {764A824A-202A-4C35-AB2D-EDE7B3936184}
+	EndGlobalSection
+EndGlobal

@@ -1,0 +1,43 @@
+﻿<Window x:Class="PhotoForumPPTX.App.HelpWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        mc:Ignorable="d"
+        Title="使い方" Width="560" Height="580" WindowStartupLocation="CenterOwner">
+    <ScrollViewer VerticalScrollBarVisibility="Auto">
+        <StackPanel Margin="20">
+            <TextBlock Text="写真フォーラムPPTX (Windows)" FontSize="18" FontWeight="Bold" />
+            <TextBlock TextWrapping="Wrap" Margin="0,8,0,16"
+                       Text="写真を選ぶと、EXIFからカメラ名・レンズ名・焦点距離・SS・F値・ISOを読み取り、写真投稿フォーラムのテンプレートの書式でpptxを作ります。複数枚選ぶと複数ページになります。" />
+
+            <TextBlock Text="基本の使い方" FontWeight="Bold" Margin="0,8,0,4" />
+            <TextBlock TextWrapping="Wrap" Text="・「写真を選択…」またはドラッグ&amp;ドロップで写真を追加します(ページの並びは▲▼ボタンで変更)。" />
+            <TextBlock TextWrapping="Wrap" Text="・右のリストで、スライドに入れる項目をチェックします。" />
+            <TextBlock TextWrapping="Wrap" Text="・EXIFが空の項目(マニュアルレンズなど)は、写真ごとの欄に手入力できます。カメラ・レンズは入力中に候補が出ます。" />
+            <TextBlock TextWrapping="Wrap" Text="・「書き出し (.pptx)」で保存します。" />
+
+            <TextBlock Text="スライドの配置" FontWeight="Bold" Margin="0,16,0,4" />
+            <TextBlock TextWrapping="Wrap" Text="・学籍番号・氏名・タイトル: 右カラムの上から順に並びます。" />
+            <TextBlock TextWrapping="Wrap" Text="・カメラ名・レンズ名は赤線の上、SS・F値・ISO・備考は赤線の下(左寄せ)。" />
+            <TextBlock TextWrapping="Wrap" Text="・焦点距離は右カラムの中央に大きく表示します。" />
+            <TextBlock TextWrapping="Wrap"
+                       Text="・デジタルズーム(Step Crop)で撮った写真は、焦点距離にズーム比を掛けた値を入れ、備考に「*Step Crop: ○mm equiv.」を用意します(備考をオンにしたときに表示)。" />
+
+            <TextBlock Text="対応表(カメラ名・レンズ名の表示名)" FontWeight="Bold" Margin="0,16,0,4" />
+            <TextBlock TextWrapping="Wrap" Text="・メイン画面の「設定…」ボタンで編集できます。" />
+            <TextBlock TextWrapping="Wrap" Text="・例: EXIFの型番 ILCE-1M2 → 表示名 α1 II(スライドには「α1 II / ILCE-1M2」と出ます)。" />
+            <TextBlock TextWrapping="Wrap" Text="・変更は、次に読み込む写真から反映されます。" />
+
+            <Separator Margin="0,16" />
+            <TextBlock Text="困ったとき・要望があるとき" FontWeight="Bold" />
+            <TextBlock TextWrapping="Wrap" Margin="0,4,0,8"
+                       Text="不具合の報告や「こうなっていたら嬉しい」という要望は、GitHubのIssueで気軽に立ててください(GitHubアカウントが必要です)。下のボタンから開くと、アプリのバージョンとOSの情報が入った状態で書き始められます。" />
+            <StackPanel Orientation="Horizontal">
+                <Button Content="Issue を立てる" Click="OnNewIssueClick" Padding="8,4" Margin="0,0,8,0" FontWeight="Bold" />
+                <Button Content="既存のIssueを見る" Click="OnIssuesClick" Padding="8,4" Margin="0,0,8,0" />
+                <Button Content="リポジトリを開く" Click="OnRepoClick" Padding="8,4" />
+            </StackPanel>
+        </StackPanel>
+    </ScrollViewer>
+</Window>

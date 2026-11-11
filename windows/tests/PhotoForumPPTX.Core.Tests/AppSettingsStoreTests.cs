@@ -56,6 +56,28 @@ public class AppSettingsStoreTests : IDisposable
     }
 
     [Fact]
+    public void Save_WritesFieldKindByName()
+    {
+        AppSettingsStore.Save(new AppSettings { Fields = new List<FieldSetting> { new(FieldKind.Camera, true) } }, _dir);
+
+        var json = File.ReadAllText(Path.Combine(_dir, "settings.json"));
+
+        Assert.Contains("\"Camera\"", json);
+    }
+
+    [Fact]
+    public void Load_AcceptsLegacyNumericFieldKind()
+    {
+        Directory.CreateDirectory(_dir);
+        File.WriteAllText(Path.Combine(_dir, "settings.json"),
+            "{\"Fields\":[{\"Kind\":3,\"Enabled\":true},{\"Kind\":9,\"Enabled\":false}]}");
+
+        var loaded = AppSettingsStore.Load(_dir);
+
+        Assert.Equal(new[] { new FieldSetting(FieldKind.Camera, true), new FieldSetting(FieldKind.Note, false) }, loaded.Fields);
+    }
+
+    [Fact]
     public void Save_DoesNotLeaveTemporaryFileBehind()
     {
         AppSettingsStore.Save(new AppSettings(), _dir);

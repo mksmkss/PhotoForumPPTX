@@ -15,6 +15,16 @@ public sealed class InverseBooleanToVisibilityConverter : IValueConverter
         throw new NotSupportedException();
 }
 
+/// <summary>falseのとき非表示にするが場所は空けておく(▲▼の矢印だけ消しても、ボタンの大きさを他の行と揃えるため)</summary>
+public sealed class BooleanToHiddenConverter : IValueConverter
+{
+    public object Convert(object? value, Type targetType, object? parameter, CultureInfo culture) =>
+        value is true ? Visibility.Visible : Visibility.Hidden;
+
+    public object ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture) =>
+        throw new NotSupportedException();
+}
+
 public sealed class NullToVisibilityConverter : IValueConverter
 {
     public object Convert(object? value, Type targetType, object? parameter, CultureInfo culture) =>

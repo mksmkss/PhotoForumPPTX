@@ -42,6 +42,19 @@ public static class FieldKindExtensions
         FieldKind.Shutter or FieldKind.Aperture or FieldKind.Iso or FieldKind.Note => 2, // 赤線の下(左寄せ)
         _ => throw new ArgumentOutOfRangeException(nameof(kind)),
     };
+
+    /// <summary>
+    /// スライド右カラムで上から何番目のグループか(学籍番号・氏名・タイトル → 焦点距離 → カメラ・レンズ → 露出情報・備考)。
+    /// 項目リストをこの順に並べ、リストの順番 = スライドでの表示順にする
+    /// </summary>
+    public static int GroupOrder(this FieldKind kind) => kind.Group() switch
+    {
+        0 => 0,
+        3 => 1,
+        1 => 2,
+        2 => 3,
+        _ => throw new ArgumentOutOfRangeException(nameof(kind)),
+    };
 }
 
 public readonly record struct FieldSetting(FieldKind Kind, bool Enabled);

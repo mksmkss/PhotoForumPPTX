@@ -10,6 +10,7 @@
     <Window.Resources>
         <BooleanToVisibilityConverter x:Key="BoolToVis" />
         <local:InverseBooleanToVisibilityConverter x:Key="InverseBoolToVis" />
+        <local:BooleanToHiddenConverter x:Key="BoolToHidden" />
         <local:ThumbnailConverter x:Key="ThumbnailConverter" />
         <local:NullToVisibilityConverter x:Key="NullToVisibilityConverter" />
         <local:StringToVisibilityConverter x:Key="StringToVisibilityConverter" />
@@ -163,7 +164,7 @@
             <DockPanel Grid.Column="2" Margin="10">
                 <TextBlock DockPanel.Dock="Top" Text="スライドに入れる項目" FontWeight="Bold" Margin="0,0,0,4" />
                 <TextBlock DockPanel.Dock="Top" TextWrapping="Wrap" Foreground="Gray" FontSize="11" Margin="0,0,0,8"
-                           Text="学籍番号・氏名・タイトルは上から順に配置。カメラ・レンズ・露出情報は下部(赤線の上下)、焦点距離は右カラム中央に固定です。" />
+                           Text="この順番でスライドに表示されます(▲▼は線で区切られたグループ内で入れ替え)。" />
 
                 <StackPanel DockPanel.Dock="Bottom" Margin="0,8,0,0">
                     <DockPanel Margin="0,0,0,6" Visibility="{Binding StudentIdField.Enabled, Converter={StaticResource BoolToVis}}">
@@ -176,23 +177,37 @@
                     </DockPanel>
                 </StackPanel>
 
-                <ItemsControl ItemsSource="{Binding Fields}">
-                    <ItemsControl.ItemTemplate>
-                        <DataTemplate>
-                            <DockPanel Margin="0,2">
-                                <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
-                                    <Button Content="▲" Width="22"
-                                            Command="{Binding DataContext.MoveFieldUpCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
-                                            CommandParameter="{Binding}" />
-                                    <Button Content="▼" Width="22"
-                                            Command="{Binding DataContext.MoveFieldDownCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
-                                            CommandParameter="{Binding}" />
+                <StackPanel>
+                    <ItemsControl ItemsSource="{Binding Fields}">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <StackPanel>
+                                    <!-- グループの境界(スライド上の配置が変わる位置)に区切り線 -->
+                                    <Border Height="1" Background="#BBBBBB" Margin="0,4"
+                                            Visibility="{Binding StartsNewGroup, Converter={StaticResource BoolToVis}}" />
+                                    <DockPanel Margin="0,2">
+                                        <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
+                                            <!-- グループの端ではボタンは残し、矢印だけ消して押せなくする -->
+                                            <Button Width="22" IsEnabled="{Binding CanMoveUp}"
+                                                    Command="{Binding DataContext.MoveFieldUpCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
+                                                    CommandParameter="{Binding}">
+                                                <TextBlock Text="▲" Visibility="{Binding CanMoveUp, Converter={StaticResource BoolToHidden}}" />
+                                            </Button>
+                                            <Button Width="22" IsEnabled="{Binding CanMoveDown}"
+                                                    Command="{Binding DataContext.MoveFieldDownCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
+                                                    CommandParameter="{Binding}">
+                                                <TextBlock Text="▼" Visibility="{Binding CanMoveDown, Converter={StaticResource BoolToHidden}}" />
+                                            </Button>
+                                        </StackPanel>
+                                        <CheckBox Content="{Binding Label}" IsChecked="{Binding Enabled}" VerticalAlignment="Center" />
+                                    </DockPanel>
                                 </StackPanel>
-                                <CheckBox Content="{Binding Label}" IsChecked="{Binding Enabled}" VerticalAlignment="Center" />
-                            </DockPanel>
-                        </DataTemplate>
-                    </ItemsControl.ItemTemplate>
-                </ItemsControl>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                    <Button Content="並び順を初期値に戻す" Command="{Binding ResetFieldOrderCommand}"
+                            HorizontalAlignment="Right" Padding="8,2" Margin="0,8,0,0" />
+                </StackPanel>
             </DockPanel>
         </Grid>
 

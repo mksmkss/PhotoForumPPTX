@@ -12,6 +12,18 @@ public sealed partial class FieldSettingViewModel : ObservableObject
     [ObservableProperty]
     private bool _enabled;
 
+    /// <summary>同じグループ内で上に移動できるか(グループの先頭なら▲を出さない)</summary>
+    [ObservableProperty]
+    private bool _canMoveUp;
+
+    /// <summary>同じグループ内で下に移動できるか(グループの末尾なら▼を出さない)</summary>
+    [ObservableProperty]
+    private bool _canMoveDown;
+
+    /// <summary>直前の項目と別グループか(上に区切り線を引く)。リスト先頭はfalse</summary>
+    [ObservableProperty]
+    private bool _startsNewGroup;
+
     public FieldSettingViewModel(FieldKind kind, bool enabled)
     {
         Kind = kind;

@@ -39,8 +39,8 @@ windows/
     PhotoForumPPTX.App/   WPFアプリ本体(View・ダイアログ・実際の更新処理)
     PhotoForumPPTX.Cli/   動作確認用コンソールアプリ
   tests/
-    PhotoForumPPTX.Core.Tests/  xUnitテスト(47件)
-    PhotoForumPPTX.Gui.Tests/   xUnitテスト(36件)
+    PhotoForumPPTX.Core.Tests/  xUnitテスト(61件)
+    PhotoForumPPTX.Gui.Tests/   xUnitテスト(53件)
 ```
 
 ## Mac版 → Windows版 の対応表
@@ -80,7 +80,7 @@ Core → Gui → App の3層構成で、GUI機能の「実装 → 単体/結合�
 
 ## 設定の永続化
 
-`Core/AppSettings.cs`(学籍番号・氏名・項目設定・フォント・行間・自動オープン設定・新機能ポップアップの既読バージョン)を`Core/AppSettingsStore.cs`で`%AppData%\PhotoForumPPTX\settings.json`に保存する。カメラ名・レンズ名対応表(`MapTable`)と同じ考え方。
+`Core/AppSettings.cs`(学籍番号・氏名・項目設定・フォント・行間・自動オープン設定・前回開いた写真フォルダ/保存先フォルダ・新機能ポップアップの既読バージョン)を`Core/AppSettingsStore.cs`で`%AppData%\PhotoForumPPTX\settings.json`に保存する。カメラ名・レンズ名対応表(`MapTable`)と同じ考え方。
 
 - **アトミック書き込み**(`Core/AtomicFile.cs`): 一時ファイルへ書いてから`File.Move`で置き換え、書き込み中のクラッシュ・電源断で設定ファイルが壊れないようにした。
 - **I/O障害耐性**: ディスク容量不足や権限エラーで保存に失敗してもアプリ本体はクラッシュしない(その回の保存だけ失敗する)。

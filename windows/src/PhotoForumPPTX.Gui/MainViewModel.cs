@@ -7,18 +7,21 @@ namespace PhotoForumPPTX.Gui;
 
 public sealed partial class MainViewModel : ObservableObject
 {
-    /// <summary>Mac版の既定(カメラ・レンズ・焦点距離・露出は有効、個人情報は無効)に合わせる</summary>
+    /// <summary>
+    /// 有効/無効はMac版の既定(カメラ・レンズ・焦点距離・露出は有効、個人情報は無効)に合わせる。
+    /// 並びはスライドでの表示順(Mac版の既定の並びとは異なるが、書き出し結果は同じ)
+    /// </summary>
     private static readonly FieldSetting[] DefaultFieldSettings =
     {
-        new(FieldKind.Camera, true),
-        new(FieldKind.Lens, true),
-        new(FieldKind.Focal, true),
-        new(FieldKind.Shutter, true),
-        new(FieldKind.Aperture, true),
-        new(FieldKind.Iso, true),
         new(FieldKind.StudentId, false),
         new(FieldKind.Name, false),
         new(FieldKind.Title, false),
+        new(FieldKind.Focal, true),
+        new(FieldKind.Camera, true),
+        new(FieldKind.Lens, true),
+        new(FieldKind.Shutter, true),
+        new(FieldKind.Aperture, true),
+        new(FieldKind.Iso, true),
         new(FieldKind.Note, false),
     };
 
@@ -76,8 +79,16 @@ public sealed partial class MainViewModel : ObservableObject
         _name = settings.Name;
 
         Fields = new ObservableCollection<FieldSettingViewModel>(LoadFields(settings));
-        foreach (var f in Fields) f.PropertyChanged += (_, _) => PersistFields();
-        Fields.CollectionChanged += (_, _) => PersistFields();
+        foreach (var f in Fields)
+            f.PropertyChanged += (_, e) => { if (e.PropertyName == nameof(FieldSettingViewModel.Enabled)) PersistFields(); };
+        Fields.CollectionChanged += (_, _) =>
+        {
+            UpdateFieldPositions();
+            PersistFields();
+        };
+        UpdateFieldPositions();
+        // 旧版の自由な並び(グループをまたぐ並び)を並べ直したときは、settings.jsonも画面と同じ順にしておく
+        if (!Fields.Select(f => f.ToFieldSetting()).SequenceEqual(settings.Fields)) PersistFields();
 
         Photos.CollectionChanged += (_, _) =>
         {
@@ -87,13 +98,30 @@ public sealed partial class MainViewModel : ObservableObject
         };
     }
 
-    /// <summary>保存済みの項目設定に、追加された既定項目(未登録のkind)を末尾へ補う</summary>
+    /// <summary>
+    /// 保存済みの項目設定に、追加された既定項目(未登録のkind)を補い、スライドでの表示順(グループ順)に並べる。
+    /// グループ内の順番は保存済みの順を保つ(OrderByは安定ソート)
+    /// </summary>
     private static IEnumerable<FieldSettingViewModel> LoadFields(AppSettings settings)
     {
         var merged = new List<FieldSetting>(settings.Fields);
         foreach (var d in DefaultFieldSettings)
             if (!merged.Any(f => f.Kind == d.Kind)) merged.Add(d);
-        return merged.Select(f => new FieldSettingViewModel(f.Kind, f.Enabled));
+        return merged.OrderBy(f => f.Kind.GroupOrder()).Select(f => new FieldSettingViewModel(f.Kind, f.Enabled));
+    }
+
+    /// <summary>各行の▲▼の表示と、グループ境界の区切り線を並びに合わせて更新する</summary>
+    private void UpdateFieldPositions()
+    {
+        for (var i = 0; i < Fields.Count; i++)
+        {
+            var group = Fields[i].Kind.Group();
+            var sameAsPrev = i > 0 && Fields[i - 1].Kind.Group() == group;
+            var sameAsNext = i < Fields.Count - 1 && Fields[i + 1].Kind.Group() == group;
+            Fields[i].CanMoveUp = sameAsPrev;
+            Fields[i].CanMoveDown = sameAsNext;
+            Fields[i].StartsNewGroup = i > 0 && !sameAsPrev;
+        }
     }
 
     partial void OnStudentIdChanged(string value)
@@ -130,8 +158,19 @@ public sealed partial class MainViewModel : ObservableObject
     [RelayCommand]
     private void AddPhotosDialog()
     {
-        var paths = _dialogService.PickPhotos();
-        if (paths != null) AddPhotos(paths);
+        var paths = _dialogService.PickPhotos(_settings.LastPhotoDir);
+        if (paths == null) return;
+        if (paths.Length > 0) RememberFolder(paths[0], dir => _settings.LastPhotoDir = dir);
+        AddPhotos(paths);
+    }
+
+    /// <summary>次回のダイアログを同じフォルダで開けるよう、選ばれたファイルのフォルダを保存する</summary>
+    private void RememberFolder(string filePath, Action<string> assign)
+    {
+        var dir = Path.GetDirectoryName(filePath);
+        if (string.IsNullOrEmpty(dir)) return;
+        assign(dir);
+        AppSettingsStore.Save(_settings, _settingsDir);
     }
 
     [RelayCommand]
@@ -146,11 +185,29 @@ public sealed partial class MainViewModel : ObservableObject
     [RelayCommand]
     private void MovePhotoDown(PhotoItemViewModel? photo) => Move(Photos, photo, +1);
 
+    /// <summary>グループをまたぐとスライド上の位置は変わらないため、同じグループ内でだけ動かす</summary>
     [RelayCommand]
-    private void MoveFieldUp(FieldSettingViewModel? field) => Move(Fields, field, -1);
+    private void MoveFieldUp(FieldSettingViewModel? field)
+    {
+        if (field is { CanMoveUp: true }) Move(Fields, field, -1);
+    }
 
     [RelayCommand]
-    private void MoveFieldDown(FieldSettingViewModel? field) => Move(Fields, field, +1);
+    private void MoveFieldDown(FieldSettingViewModel? field)
+    {
+        if (field is { CanMoveDown: true }) Move(Fields, field, +1);
+    }
+
+    /// <summary>並び順だけを初期値(スライドでの既定の表示順)に戻す。チェックの状態はそのまま</summary>
+    [RelayCommand]
+    private void ResetFieldOrder()
+    {
+        for (var i = 0; i < DefaultFieldSettings.Length; i++)
+        {
+            var current = Fields.IndexOf(Fields.First(f => f.Kind == DefaultFieldSettings[i].Kind));
+            if (current != i) Fields.Move(current, i);
+        }
+    }
 
     private static void Move<T>(ObservableCollection<T> list, T? item, int offset)
     {
@@ -165,8 +222,9 @@ public sealed partial class MainViewModel : ObservableObject
     [RelayCommand(CanExecute = nameof(HasPhotos))]
     private async Task Export()
     {
-        var output = _dialogService.PickSaveLocation("写真投稿フォーラム.pptx");
+        var output = _dialogService.PickSaveLocation("写真投稿フォーラム.pptx", _settings.LastExportDir);
         if (output == null) return;
+        RememberFolder(output, dir => _settings.LastExportDir = dir);
         await ExportAsync(output);
     }
 

@@ -198,6 +198,17 @@ public sealed partial class MainViewModel : ObservableObject
         if (field is { CanMoveDown: true }) Move(Fields, field, +1);
     }
 
+    /// <summary>並び順だけを初期値(スライドでの既定の表示順)に戻す。チェックの状態はそのまま</summary>
+    [RelayCommand]
+    private void ResetFieldOrder()
+    {
+        for (var i = 0; i < DefaultFieldSettings.Length; i++)
+        {
+            var current = Fields.IndexOf(Fields.First(f => f.Kind == DefaultFieldSettings[i].Kind));
+            if (current != i) Fields.Move(current, i);
+        }
+    }
+
     private static void Move<T>(ObservableCollection<T> list, T? item, int offset)
     {
         if (item == null) return;

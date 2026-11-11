@@ -132,6 +132,27 @@ public class MainViewModelTests : IDisposable
         Assert.False(camera.CanMoveDown);
     }
 
+    [Fact]
+    public void ResetFieldOrder_RestoresSlideOrder_KeepingEnabledStates_AndSaves()
+    {
+        var vm = CreateViewModel(out _);
+        vm.MoveFieldDownCommand.Execute(vm.Fields.First(f => f.Kind == FieldKind.Camera));
+        vm.MoveFieldDownCommand.Execute(vm.Fields.First(f => f.Kind == FieldKind.StudentId));
+        vm.MoveFieldUpCommand.Execute(vm.Fields.First(f => f.Kind == FieldKind.Note));
+        vm.Fields.First(f => f.Kind == FieldKind.Note).Enabled = true;
+        vm.Fields.First(f => f.Kind == FieldKind.Iso).Enabled = false;
+        Assert.NotEqual(SlideOrder, vm.Fields.Select(f => f.Kind));
+
+        vm.ResetFieldOrderCommand.Execute(null);
+
+        Assert.Equal(SlideOrder, vm.Fields.Select(f => f.Kind));
+        Assert.True(vm.Fields.First(f => f.Kind == FieldKind.Note).Enabled);
+        Assert.False(vm.Fields.First(f => f.Kind == FieldKind.Iso).Enabled);
+        Assert.Equal(SlideOrder, AppSettingsStore.Load(_dir).Fields.Select(f => f.Kind));
+        Assert.False(vm.Fields.First(f => f.Kind == FieldKind.StudentId).CanMoveUp);
+        Assert.False(vm.Fields.First(f => f.Kind == FieldKind.Lens).CanMoveDown);
+    }
+
     [Theory]
     [InlineData(FieldKind.Title, false)]     // 学籍番号グループの末尾 → 焦点距離の下へは行かない
     [InlineData(FieldKind.Focal, true)]      // 焦点距離 → タイトルの上へは行かない

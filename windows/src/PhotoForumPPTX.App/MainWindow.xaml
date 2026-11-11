@@ -177,30 +177,34 @@
                     </DockPanel>
                 </StackPanel>
 
-                <ItemsControl ItemsSource="{Binding Fields}">
-                    <ItemsControl.ItemTemplate>
-                        <DataTemplate>
-                            <StackPanel>
-                                <!-- グループの境界(スライド上の配置が変わる位置)に区切り線 -->
-                                <Border Height="1" Background="#BBBBBB" Margin="0,4"
-                                        Visibility="{Binding StartsNewGroup, Converter={StaticResource BoolToVis}}" />
-                                <DockPanel Margin="0,2">
-                                    <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
-                                        <Button Content="▲" Width="22"
-                                                Visibility="{Binding CanMoveUp, Converter={StaticResource BoolToHidden}}"
-                                                Command="{Binding DataContext.MoveFieldUpCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
-                                                CommandParameter="{Binding}" />
-                                        <Button Content="▼" Width="22"
-                                                Visibility="{Binding CanMoveDown, Converter={StaticResource BoolToHidden}}"
-                                                Command="{Binding DataContext.MoveFieldDownCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
-                                                CommandParameter="{Binding}" />
-                                    </StackPanel>
-                                    <CheckBox Content="{Binding Label}" IsChecked="{Binding Enabled}" VerticalAlignment="Center" />
-                                </DockPanel>
-                            </StackPanel>
-                        </DataTemplate>
-                    </ItemsControl.ItemTemplate>
-                </ItemsControl>
+                <StackPanel>
+                    <ItemsControl ItemsSource="{Binding Fields}">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <StackPanel>
+                                    <!-- グループの境界(スライド上の配置が変わる位置)に区切り線 -->
+                                    <Border Height="1" Background="#BBBBBB" Margin="0,4"
+                                            Visibility="{Binding StartsNewGroup, Converter={StaticResource BoolToVis}}" />
+                                    <DockPanel Margin="0,2">
+                                        <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
+                                            <Button Content="▲" Width="22"
+                                                    Visibility="{Binding CanMoveUp, Converter={StaticResource BoolToHidden}}"
+                                                    Command="{Binding DataContext.MoveFieldUpCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
+                                                    CommandParameter="{Binding}" />
+                                            <Button Content="▼" Width="22"
+                                                    Visibility="{Binding CanMoveDown, Converter={StaticResource BoolToHidden}}"
+                                                    Command="{Binding DataContext.MoveFieldDownCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
+                                                    CommandParameter="{Binding}" />
+                                        </StackPanel>
+                                        <CheckBox Content="{Binding Label}" IsChecked="{Binding Enabled}" VerticalAlignment="Center" />
+                                    </DockPanel>
+                                </StackPanel>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                    <Button Content="並び順を初期値に戻す" Command="{Binding ResetFieldOrderCommand}"
+                            HorizontalAlignment="Right" Padding="8,2" Margin="0,8,0,0" />
+                </StackPanel>
             </DockPanel>
         </Grid>
 

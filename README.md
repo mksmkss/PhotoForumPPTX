@@ -49,24 +49,24 @@ Get-ChildItem $dest -Recurse | Unblock-File
 Start-Process "$dest\PhotoForumPPTX.App.exe"
 ```
 
-- .NET のインストールは不要です(自己完結パッケージ)。
+- .NET のインストールは不要です(本アプリは自己完結パッケージになっています)。
 - 本アプリが起動中なら、先に終了してから実行してください。
 - 初回起動時に「Windows によって PC が保護されました」と出ることがあります(未署名アプリのため)。「詳細情報」→「実行」で起動できます。
-- デスクトップにショートカットが欲しい場合は、`%LocalAppData%\Programs\PhotoForumPPTX\PhotoForumPPTX.App.exe` を右クリックして「ショートカットの作成」してください。
+- デスクトップにショートカットが欲しい場合は、デスクトップで右クリック → 「新規作成」 → 「ショートカット」とし、項目の場所に `%LocalAppData%\Programs\PhotoForumPPTX\PhotoForumPPTX.App.exe` を入力してください。
 - ネットワークを使わずzipを直接受け取った場合は、[`windows/install.ps1`](windows/install.ps1) と `PhotoForumPPTX-win.zip` を同じフォルダに置いて次を実行します。
   ```powershell
   powershell -ExecutionPolicy Bypass -File install.ps1
   ```
 
 ## アップデート
-新しい版が出ると、起動時に上部にバナーが出ます。「今すぐ更新」を押すだけで、ダウンロード → 入れ替え → 再起動まで自動です。
+新しい版が出ると、起動時に上部にバナーが出ます。「今すぐ更新」を押すだけで、ダウンロード → 入れ替え → 再起動まで自動で行います。
 設定 → 情報タブで手動確認もできます。
 
 アップデート後の初回起動で、変更点が「新機能」ウィンドウに出ます。メニュー ヘルプ → 新機能(更新履歴)でいつでも見返せます。
 
 # 使い方
 - 「写真を選択…」ボタンを押下または写真をドラッグ&ドロップして写真を追加します。写真ごとにEXIFの値を手修正できます。
-- 右のリストで、スライドに入れる項目を選択(学籍番号・氏名・タイトルは初期オフ)します。▲▼ボタンで並べ替えられます。
+- 右のリストで、スライドに入れる項目を選択します(学籍番号・氏名・タイトルは初期値オフ)。Windows版では▲▼ボタンで並べ替えられます。
   - 学籍番号・氏名・タイトル: 上から順に配置
   - カメラ・レンズ: 赤線の上 / 焦点距離・SS・F値・ISO: 赤線の下(テンプレート通り)
 - 設定(Macは⌘,、Windowsはメイン画面の「設定…」ボタン)でカメラ型番→表示名、レンズ名の対応表と、スライドのフォント(欧文・和文)を編集できます。
@@ -74,7 +74,7 @@ Start-Process "$dest\PhotoForumPPTX.App.exe"
 
 # 困ったとき・要望
 メニューの **Help(ヘルプ) → 使い方** に説明があります。不具合や「こうなっていたら嬉しい」という要望は、
-**Help(ヘルプ) → 不具合・要望を報告 (GitHub Issue)…** から [Issue](https://github.com/mksmkss/PhotoForumPPTX/issues) を立ててください(GitHubアカウントが必要。アプリのバージョンとOSの情報が入った状態で書き始められます)。
+**Help(ヘルプ) → 不具合・要望を報告 (GitHub Issue)…** から [Issue](https://github.com/mksmkss/PhotoForumPPTX/issues) を立ててください(GitHubアカウントが必要です。アプリのバージョンとOSの情報が入った状態で書き始められます)。
 
 # 開発者向け
 

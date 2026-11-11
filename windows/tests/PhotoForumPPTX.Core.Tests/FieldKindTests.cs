@@ -21,6 +21,22 @@ public class FieldKindTests
     }
 
     [Theory]
+    [InlineData(FieldKind.StudentId, 0)]
+    [InlineData(FieldKind.Name, 0)]
+    [InlineData(FieldKind.Title, 0)]
+    [InlineData(FieldKind.Focal, 1)]
+    [InlineData(FieldKind.Camera, 2)]
+    [InlineData(FieldKind.Lens, 2)]
+    [InlineData(FieldKind.Shutter, 3)]
+    [InlineData(FieldKind.Aperture, 3)]
+    [InlineData(FieldKind.Iso, 3)]
+    [InlineData(FieldKind.Note, 3)]
+    public void GroupOrder_FollowsSlideTopToBottom(FieldKind kind, int expected)
+    {
+        Assert.Equal(expected, kind.GroupOrder());
+    }
+
+    [Theory]
     [InlineData(FieldKind.StudentId, 10.5)]
     [InlineData(FieldKind.Title, 11)]
     [InlineData(FieldKind.Camera, 8)]

@@ -13,7 +13,7 @@
 
             <TextBlock Text="基本の使い方" FontWeight="Bold" Margin="0,8,0,4" />
             <TextBlock TextWrapping="Wrap" Text="・「写真を選択…」またはドラッグ&amp;ドロップで写真を追加します(ページの並びは▲▼ボタンで変更)。" />
-            <TextBlock TextWrapping="Wrap" Text="・右のリストで、スライドに入れる項目をチェックします。" />
+            <TextBlock TextWrapping="Wrap" Text="・右のリストで、スライドに入れる項目をチェックします。リストの順番がそのままスライドでの表示順です。線で区切られたグループ内では▲▼で順番を入れ替えられます。" />
             <TextBlock TextWrapping="Wrap" Text="・EXIFが空の項目(マニュアルレンズなど)は、写真ごとの欄に手入力できます。カメラ・レンズは入力中に候補が出ます。" />
             <TextBlock TextWrapping="Wrap" Text="・「書き出し (.pptx)」で保存します。" />
 

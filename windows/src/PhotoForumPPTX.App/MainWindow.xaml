@@ -187,14 +187,17 @@
                                             Visibility="{Binding StartsNewGroup, Converter={StaticResource BoolToVis}}" />
                                     <DockPanel Margin="0,2">
                                         <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
-                                            <Button Content="▲" Width="22"
-                                                    Visibility="{Binding CanMoveUp, Converter={StaticResource BoolToHidden}}"
+                                            <!-- グループの端ではボタンは残し、矢印だけ消して押せなくする -->
+                                            <Button Width="22" IsEnabled="{Binding CanMoveUp}"
                                                     Command="{Binding DataContext.MoveFieldUpCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
-                                                    CommandParameter="{Binding}" />
-                                            <Button Content="▼" Width="22"
-                                                    Visibility="{Binding CanMoveDown, Converter={StaticResource BoolToHidden}}"
+                                                    CommandParameter="{Binding}">
+                                                <TextBlock Text="▲" Visibility="{Binding CanMoveUp, Converter={StaticResource BoolToHidden}}" />
+                                            </Button>
+                                            <Button Width="22" IsEnabled="{Binding CanMoveDown}"
                                                     Command="{Binding DataContext.MoveFieldDownCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
-                                                    CommandParameter="{Binding}" />
+                                                    CommandParameter="{Binding}">
+                                                <TextBlock Text="▼" Visibility="{Binding CanMoveDown, Converter={StaticResource BoolToHidden}}" />
+                                            </Button>
                                         </StackPanel>
                                         <CheckBox Content="{Binding Label}" IsChecked="{Binding Enabled}" VerticalAlignment="Center" />
                                     </DockPanel>

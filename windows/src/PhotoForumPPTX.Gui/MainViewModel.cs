@@ -130,8 +130,19 @@ public sealed partial class MainViewModel : ObservableObject
     [RelayCommand]
     private void AddPhotosDialog()
     {
-        var paths = _dialogService.PickPhotos();
-        if (paths != null) AddPhotos(paths);
+        var paths = _dialogService.PickPhotos(_settings.LastPhotoDir);
+        if (paths == null) return;
+        if (paths.Length > 0) RememberFolder(paths[0], dir => _settings.LastPhotoDir = dir);
+        AddPhotos(paths);
+    }
+
+    /// <summary>次回のダイアログを同じフォルダで開けるよう、選ばれたファイルのフォルダを保存する</summary>
+    private void RememberFolder(string filePath, Action<string> assign)
+    {
+        var dir = Path.GetDirectoryName(filePath);
+        if (string.IsNullOrEmpty(dir)) return;
+        assign(dir);
+        AppSettingsStore.Save(_settings, _settingsDir);
     }
 
     [RelayCommand]
@@ -165,8 +176,9 @@ public sealed partial class MainViewModel : ObservableObject
     [RelayCommand(CanExecute = nameof(HasPhotos))]
     private async Task Export()
     {
-        var output = _dialogService.PickSaveLocation("写真投稿フォーラム.pptx");
+        var output = _dialogService.PickSaveLocation("写真投稿フォーラム.pptx", _settings.LastExportDir);
         if (output == null) return;
+        RememberFolder(output, dir => _settings.LastExportDir = dir);
         await ExportAsync(output);
     }
 

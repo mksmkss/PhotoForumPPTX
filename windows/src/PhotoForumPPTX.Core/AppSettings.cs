@@ -11,6 +11,12 @@ public sealed class AppSettings
     public double LineSpacing { get; set; } = 1.0;
     public bool OpenAfterExport { get; set; } = true;
 
+    /// <summary>写真を選ぶダイアログで前回写真を選んだフォルダ。空なら既定の場所</summary>
+    public string LastPhotoDir { get; set; } = "";
+
+    /// <summary>書き出し先を選ぶダイアログで前回保存したフォルダ。空ならダウンロード</summary>
+    public string LastExportDir { get; set; } = "";
+
     /// <summary>新機能ポップアップを最後に見せた版。空なら未表示</summary>
     public string LastSeenVersion { get; set; } = "";
 }

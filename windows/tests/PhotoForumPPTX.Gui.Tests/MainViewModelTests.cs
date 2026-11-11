@@ -174,6 +174,66 @@ public class MainViewModelTests : IDisposable
     }
 
     [Fact]
+    public void AddPhotosDialog_RemembersFolderAndOpensThereNextTime()
+    {
+        var vm = CreateViewModel(out var dialog, out var settings);
+        dialog.PhotosToReturn = new[] { _sample1 };
+
+        vm.AddPhotosDialogCommand.Execute(null);
+        Assert.Equal("", dialog.PhotosInitialDirectory);
+
+        var folder = Path.GetDirectoryName(_sample1);
+        Assert.Equal(folder, settings.LastPhotoDir);
+        Assert.Equal(folder, AppSettingsStore.Load(_dir).LastPhotoDir);
+
+        vm.AddPhotosDialogCommand.Execute(null);
+        Assert.Equal(folder, dialog.PhotosInitialDirectory);
+    }
+
+    [Fact]
+    public void AddPhotosDialog_Cancelled_KeepsPreviousFolder()
+    {
+        var vm = CreateViewModel(out var dialog, out var settings);
+        settings.LastPhotoDir = _dir;
+        dialog.PhotosToReturn = null;
+
+        vm.AddPhotosDialogCommand.Execute(null);
+
+        Assert.Equal(_dir, settings.LastPhotoDir);
+    }
+
+    [Fact]
+    public async Task ExportCommand_RemembersFolderAndOpensThereNextTime()
+    {
+        var vm = CreateViewModel(out var dialog, out var settings);
+        vm.AddPhotos(new[] { _sample1 });
+        var outDir = Path.Combine(_dir, "out");
+        Directory.CreateDirectory(outDir);
+        dialog.SaveLocationToReturn = Path.Combine(outDir, "a.pptx");
+
+        await vm.ExportCommand.ExecuteAsync(null);
+        Assert.Equal("", dialog.SaveInitialDirectory);
+        Assert.Equal(outDir, settings.LastExportDir);
+        Assert.Equal(outDir, AppSettingsStore.Load(_dir).LastExportDir);
+
+        await vm.ExportCommand.ExecuteAsync(null);
+        Assert.Equal(outDir, dialog.SaveInitialDirectory);
+    }
+
+    [Fact]
+    public async Task ExportCommand_Cancelled_KeepsPreviousFolder()
+    {
+        var vm = CreateViewModel(out var dialog, out var settings);
+        vm.AddPhotos(new[] { _sample1 });
+        settings.LastExportDir = _dir;
+        dialog.SaveLocationToReturn = null;
+
+        await vm.ExportCommand.ExecuteAsync(null);
+
+        Assert.Equal(_dir, settings.LastExportDir);
+    }
+
+    [Fact]
     public void StudentIdNameAndFields_ArePersistedAndReloaded()
     {
         var vm = CreateViewModel(out _, out var settings);

@@ -66,6 +66,30 @@ public class AppSettingsStoreTests : IDisposable
     }
 
     [Fact]
+    public void Save_WritesReadableJson_WithJapaneseUnescapedAndOneValuePerLine()
+    {
+        AppSettingsStore.Save(new AppSettings { FontEa = "ＭＳ Ｐゴシック" }, _dir);
+
+        var json = File.ReadAllText(Path.Combine(_dir, "settings.json"));
+
+        Assert.Contains("ＭＳ Ｐゴシック", json);
+        Assert.DoesNotContain("\\u", json);
+        Assert.Contains("\n", json);
+    }
+
+    [Fact]
+    public void Load_AcceptsLegacyCompactEscapedJson()
+    {
+        Directory.CreateDirectory(_dir);
+        File.WriteAllText(Path.Combine(_dir, "settings.json"),
+            "{\"FontEa\":\"\\uFF2D\\uFF33 \\uFF30\\u30B4\\u30B7\\u30C3\\u30AF\",\"LineSpacing\":1}");
+
+        var loaded = AppSettingsStore.Load(_dir);
+
+        Assert.Equal("ＭＳ Ｐゴシック", loaded.FontEa);
+    }
+
+    [Fact]
     public void Load_AcceptsLegacyNumericFieldKind()
     {
         Directory.CreateDirectory(_dir);

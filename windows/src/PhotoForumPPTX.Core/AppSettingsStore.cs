@@ -1,5 +1,7 @@
+using System.Text.Encodings.Web;
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using System.Text.Unicode;
 
 namespace PhotoForumPPTX.Core;
 
@@ -9,11 +11,14 @@ public static class AppSettingsStore
 
     /// <summary>
     /// 項目の種類(Kind)を数値ではなく名前("Camera"など)で書き、ファイルを見て何の設定か分かるようにする。
-    /// 読み込みは旧形式の数値("Kind":3)も受け付ける
+    /// 読み込みは旧形式の数値("Kind":3)も受け付ける。
+    /// 人が開いて読めるよう改行・インデントを入れ、フォント名などの日本語も\uXXXXにせずそのまま書く
     /// </summary>
     private static readonly JsonSerializerOptions Options = new()
     {
         Converters = { new JsonStringEnumConverter() },
+        WriteIndented = true,
+        Encoder = JavaScriptEncoder.Create(UnicodeRanges.All),
     };
 
     /// <summary>設定ファイルが既に存在するか(= 新規インストールか既存ユーザーかの判定に使う)</summary>

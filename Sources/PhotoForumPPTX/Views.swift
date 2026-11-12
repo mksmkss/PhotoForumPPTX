@@ -490,6 +490,13 @@ struct GeneralSettings: View {
             Toggle("書き出したらpptxを自動で開く", isOn: $model.openAfterExport)
             Text("オフにすると、書き出したファイルをFinderで表示します。")
                 .font(.caption).foregroundStyle(.secondary)
+            Picker("スライドのサイズ", selection: $model.slideScale) {
+                Text("25.4 × 14.29 cm(標準)").tag(1)
+                Text("50.8 × 28.58 cm").tag(2)
+                Text("101.6 × 57.15 cm").tag(4)
+            }
+            Text("文字・写真・線は、スライドの大きさに合わせて同じ比率で拡大されます。")
+                .font(.caption).foregroundStyle(.secondary)
         }
         .padding()
         .frame(maxHeight: .infinity, alignment: .top)

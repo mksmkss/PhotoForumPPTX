@@ -7,6 +7,11 @@ public static class ReleaseNotes
 {
     public static readonly IReadOnlyList<ReleaseNote> All = new[]
     {
+        new ReleaseNote("1.1", new[]
+        {
+            "カメラ名とレンズ名を、1つのテキストボックスにまとめました(見た目は今までどおり)",
+            "赤線の下の撮影情報ボックスを赤線の中心に揃え、「Shutter Speed: 1/1,250 sec」のようにシャッタースピードが4桁でも「sec」が次の行に落ちないように",
+        }),
         new ReleaseNote("1.0", new[]
         {
             "Windows版の最初の正式版です(Mac版v1.6相当の機能に対応)",

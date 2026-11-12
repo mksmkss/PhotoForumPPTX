@@ -20,6 +20,8 @@ public static class PptxBuilder
     public const int ColX = 7633500, ColW = 1584176;
     public const int StartY = 180783;
     public const int LowerX = 7817724, LowerW = 1326277;
+    public const int LineX = 7817723, LineW = 1215730; // 赤線
+    public const int LowerInset = 91440; // 撮影情報ボックスの左右余白(既定値)
 
     public static void Build(
         string templatePath, string outputPath, IReadOnlyList<PhotoInfo> photos, IReadOnlyList<FieldSetting> fields,
@@ -161,18 +163,20 @@ public static class PptxBuilder
             shapes.Append(LineShape(id, lineY));
             id++;
             var edge = lineY - 25000; // 本文の下端(線の少し上)
-            for (var i = upper.Count - 1; i >= 0; i--)
+            if (upper.Count > 0) // 線の上(カメラ名・レンズ名)は1つのテキストボックスにまとめ、中央寄せ
             {
-                var (k, t) = upper[i];
-                var y = edge + inset - Height(k, t);
-                Emit(k, t, y);
+                var total = 2 * inset + upper.Sum(it => Step(it.Kind, it.Text, Height));
+                var y = edge + inset - total;
+                shapes.Append(StackedShape(id, y, total, upper, fonts));
+                id++;
                 edge = y + inset;
             }
             var down = lineY + 30000 - inset;
             if (lower.Count > 0) // 線の下は1つのテキストボックスにまとめ、左寄せ
             {
-                var lh = LowerHeight(lower, lineSpacing);
-                shapes.Append(LowerShape(id, down, lh, lower, fonts, lineSpacing));
+                var (bx, bw) = LowerBox(lower);
+                var lh = LowerHeight(lower, lineSpacing, bw);
+                shapes.Append(LowerShape(id, down, lh, lower, fonts, lineSpacing, bx, bw));
                 id++;
             }
         }
@@ -206,25 +210,46 @@ public static class PptxBuilder
         }
     }
 
-    public static int LowerHeight(IReadOnlyList<(FieldKind Kind, string Text)> items, double spacing)
+    /// <summary>撮影情報ボックスの位置と幅。文字は左揃えのまま、最も長い行の幅に合わせたボックスを赤線の中心に置く(=文字のかたまりが赤線の中央に来る)</summary>
+    public static (int X, int W) LowerBox(IReadOnlyList<(FieldKind Kind, string Text)> items)
     {
-        var body = items.Sum(it => EstimateLines(it.Text, it.Kind.FontSize(), LowerW) * it.Kind.FontSize() * 1.2 * spacing);
+        var widest = items.Count == 0 ? 0 : items.Max(it => it.Text.EnumerateRunes().Sum(r => r.Value < 0x2000 ? it.Kind.FontSize() * 0.52 : it.Kind.FontSize()));
+        var w = Math.Min((int)((widest + 6) * 12700) + 2 * LowerInset, LineW + 200000); // +6pt は実際のフォント幅との誤差ぶん
+        return (LineX + LineW / 2 - w / 2, w);
+    }
+
+    public static int LowerHeight(IReadOnlyList<(FieldKind Kind, string Text)> items, double spacing, int width = LowerW)
+    {
+        var body = items.Sum(it => EstimateLines(it.Text, it.Kind.FontSize(), width) * it.Kind.FontSize() * 1.2 * spacing);
         return (int)(body * 12700) + 91440;
     }
 
-    /// <summary>撮影情報(シャッタースピード/F値/ISO/備考)を1つのテキストボックスにまとめる。行間は spacing(1.0 = 100%)</summary>
-    public static string LowerShape(int id, int y, int h, IReadOnlyList<(FieldKind Kind, string Text)> items, SlideFonts fonts, double spacing)
+    /// <summary>撮影情報(シャッタースピード/F値/ISO/備考)を1つのテキストボックスにまとめ、左揃え。行間は spacing(1.0 = 100%)</summary>
+    public static string LowerShape(int id, int y, int h, IReadOnlyList<(FieldKind Kind, string Text)> items, SlideFonts fonts, double spacing, int x = LowerX, int w = LowerW)
     {
         var paras = new StringBuilder();
         foreach (var (k, t) in items)
         {
             var sz = (int)(k.FontSize() * 100);
-            var marL = k == FieldKind.Note ? " marL=\"54000\"" : "";
-            var ppr = $"<a:pPr algn=\"l\"{marL}><a:lnSpc><a:spcPct val=\"{(int)Math.Round(spacing * 100000, MidpointRounding.AwayFromZero)}\"/></a:lnSpc></a:pPr>";
+            var ppr = $"<a:pPr algn=\"l\"><a:lnSpc><a:spcPct val=\"{(int)Math.Round(spacing * 100000, MidpointRounding.AwayFromZero)}\"/></a:lnSpc></a:pPr>";
             paras.Append($"<a:p>{ppr}<a:r><a:rPr lang=\"ja-JP\" altLang=\"en-US\" sz=\"{sz}\" dirty=\"0\"><a:solidFill><a:prstClr val=\"white\"/></a:solidFill><a:latin typeface=\"{Esc(fonts.Latin)}\"/><a:ea typeface=\"{Esc(fonts.Ea)}\"/></a:rPr><a:t>{Esc(t)}</a:t></a:r></a:p>");
         }
         return $"<p:sp><p:nvSpPr><p:cNvPr id=\"{id}\" name=\"撮影情報\"/><p:cNvSpPr txBox=\"1\"/><p:nvPr/></p:nvSpPr>" +
-            $"<p:spPr><a:xfrm><a:off x=\"{LowerX}\" y=\"{y}\"/><a:ext cx=\"{LowerW}\" cy=\"{h}\"/></a:xfrm><a:prstGeom prst=\"rect\"><a:avLst/></a:prstGeom><a:noFill/></p:spPr>" +
+            $"<p:spPr><a:xfrm><a:off x=\"{x}\" y=\"{y}\"/><a:ext cx=\"{w}\" cy=\"{h}\"/></a:xfrm><a:prstGeom prst=\"rect\"><a:avLst/></a:prstGeom><a:noFill/></p:spPr>" +
+            $"<p:txBody><a:bodyPr wrap=\"square\" rtlCol=\"0\"><a:spAutoFit/></a:bodyPr><a:lstStyle/>{paras}</p:txBody></p:sp>";
+    }
+
+    /// <summary>複数の項目を中央寄せの段落として1つのボックスに積む。行送りは文字サイズの1.2倍に固定(別ボックスだった頃と同じ位置になる)</summary>
+    public static string StackedShape(int id, int y, int h, IReadOnlyList<(FieldKind Kind, string Text)> items, SlideFonts fonts)
+    {
+        var paras = new StringBuilder();
+        foreach (var (k, t) in items)
+        {
+            var size = k.FontSize();
+            paras.Append($"<a:p><a:pPr algn=\"ctr\"><a:lnSpc><a:spcPts val=\"{(int)Math.Round(size * 120, MidpointRounding.AwayFromZero)}\"/></a:lnSpc></a:pPr><a:r><a:rPr lang=\"ja-JP\" altLang=\"en-US\" sz=\"{(int)(size * 100)}\" dirty=\"0\"><a:solidFill><a:prstClr val=\"white\"/></a:solidFill><a:latin typeface=\"{Esc(fonts.Latin)}\"/><a:ea typeface=\"{Esc(fonts.Ea)}\"/></a:rPr><a:t>{Esc(t)}</a:t></a:r></a:p>");
+        }
+        return $"<p:sp><p:nvSpPr><p:cNvPr id=\"{id}\" name=\"カメラ・レンズ名\"/><p:cNvSpPr txBox=\"1\"/><p:nvPr/></p:nvSpPr>" +
+            $"<p:spPr><a:xfrm><a:off x=\"{ColX}\" y=\"{y}\"/><a:ext cx=\"{ColW}\" cy=\"{h}\"/></a:xfrm><a:prstGeom prst=\"rect\"><a:avLst/></a:prstGeom><a:noFill/></p:spPr>" +
             $"<p:txBody><a:bodyPr wrap=\"square\" rtlCol=\"0\"><a:spAutoFit/></a:bodyPr><a:lstStyle/>{paras}</p:txBody></p:sp>";
     }
 

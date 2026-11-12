@@ -26,7 +26,7 @@ Mac版(`Sources/`, `Resources/`)の核心機能を .NET 8 / WPF に移植した�
 ```powershell
 cd windows
 dotnet build       # 開発時のビルド
-dotnet test        # ユニットテスト(Core/Gui合わせて114件)
+dotnet test        # ユニットテスト(Core/Gui合わせて117件)
 dotnet run --project src/PhotoForumPPTX.App   # 実行
 ./build.ps1        # dist/PhotoForumPPTX-win.zip を生成 (win-x64, 自己完結)
 ```
@@ -59,7 +59,7 @@ gh release create win-v1.1 dist/PhotoForumPPTX-win.zip --title "Windows v1.1" --
 - `src/PhotoForumPPTX.Gui` — ViewModel層(MVVM、WPF非依存でテスト可能)
 - `src/PhotoForumPPTX.App` — WPFアプリ本体(View・ダイアログ・実際の更新処理)
 - `src/PhotoForumPPTX.Cli` — 動作確認用コンソールアプリ
-- `tests/PhotoForumPPTX.Core.Tests`, `tests/PhotoForumPPTX.Gui.Tests` — xUnitテスト(計114件)
+- `tests/PhotoForumPPTX.Core.Tests`, `tests/PhotoForumPPTX.Gui.Tests` — xUnitテスト(計117件)
 
 ## Mac版との違い・制約
 

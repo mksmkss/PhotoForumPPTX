@@ -59,6 +59,46 @@ public class PptxBuilderTests : IDisposable
     }
 
     [Fact]
+    public void LowerBox_FitsWidestLineAndCentersOnRedLine()
+    {
+        var (x, w) = PptxBuilder.LowerBox(new[] { (FieldKind.Aperture, "Aperture: f/2.8"), (FieldKind.Iso, "ISO: 100") });
+        Assert.True(w < PptxBuilder.LowerW);
+        Assert.Equal(PptxBuilder.LineX + PptxBuilder.LineW / 2, x + w / 2);
+    }
+
+    [Fact]
+    public void LowerBox_WidensForFourDigitShutterSpeedUpToLimit()
+    {
+        var (x, w) = PptxBuilder.LowerBox(new[] { (FieldKind.Shutter, "Shutter Speed: 1/1,250 sec") });
+        Assert.Equal(PptxBuilder.LineW + 200000, w);
+        Assert.Equal(PptxBuilder.LineX + PptxBuilder.LineW / 2, x + w / 2);
+    }
+
+    [Fact]
+    public void SlideXml_PutsCameraAndLensInOneCenteredBox()
+    {
+        var photo = PhotoInfo.ForTesting(Path.Combine(_dir, "x.jpg"), 300, 200, 1);
+        photo.Camera = "α7 IV";
+        photo.Lens = "FE 35mm F1.4 GM";
+        photo.Shutter = "1/1,250";
+        photo.Note = "Step Crop";
+        var fields = new List<FieldSetting>
+        {
+            new(FieldKind.Camera, true), new(FieldKind.Lens, true),
+            new(FieldKind.Shutter, true), new(FieldKind.Note, true),
+        };
+
+        var xml = PptxBuilder.SlideXml(photo, fields, "", "", SlideFonts.Default);
+
+        var shapes = System.Text.RegularExpressions.Regex.Matches(xml, "<p:sp>.*?</p:sp>").Select(m => m.Value).ToList();
+        var camLens = Assert.Single(shapes, s => s.Contains("α7 IV") || s.Contains("FE 35mm F1.4 GM"));
+        Assert.Contains("name=\"カメラ・レンズ名\"", camLens);
+        Assert.True(camLens.IndexOf("α7 IV", StringComparison.Ordinal) < camLens.IndexOf("FE 35mm F1.4 GM", StringComparison.Ordinal));
+        Assert.Equal(2, System.Text.RegularExpressions.Regex.Matches(camLens, "<a:pPr algn=\"ctr\"><a:lnSpc><a:spcPts val=\"960\"/>").Count);
+        Assert.DoesNotContain("marL", xml);
+    }
+
+    [Fact]
     public void Build_ProducesOneSlidePerPhotoWithEmbeddedImages()
     {
         var templatePath = Path.Combine(AppContext.BaseDirectory, "Fixtures", "template.pptx");

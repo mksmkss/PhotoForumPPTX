@@ -39,7 +39,7 @@ windows/
     PhotoForumPPTX.App/   WPFアプリ本体(View・ダイアログ・実際の更新処理)
     PhotoForumPPTX.Cli/   動作確認用コンソールアプリ
   tests/
-    PhotoForumPPTX.Core.Tests/  xUnitテスト(61件)
+    PhotoForumPPTX.Core.Tests/  xUnitテスト(64件)
     PhotoForumPPTX.Gui.Tests/   xUnitテスト(53件)
 ```
 

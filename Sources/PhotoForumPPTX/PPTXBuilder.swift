@@ -64,15 +64,19 @@ struct Panel {
     var colX: Int, colW: Int
     var narrow: Bool
     // 狭い列はテンプレートの寸法に合わせる: 文字は列の左端+7.2pt(既定の余白)から、赤線は列の左端+83219、幅933061
-    var lowerX: Int { narrow ? colX + 55440 : colX + 184224 }
-    var lowerW: Int { narrow ? colW - 55440 : 1326277 }
     var lineX: Int { narrow ? colX + 83219 : 7817723 }
     var lineW: Int { narrow ? 933061 : 1215730 }
+    /// 撮影情報ボックスの位置と幅。文字は左揃えのまま、最も長い行の幅に合わせたボックスを赤線の中心に置く(=文字のかたまりが赤線の中央に来る)
+    func lowerBox(_ items: [(FieldKind, String)], layout: SlideLayout) -> (x: Int, w: Int) {
+        let widest = items.map { k, t in t.unicodeScalars.reduce(0.0) { $0 + ($1.value < 0x2000 ? layout.fontSize(k) * 0.52 : layout.fontSize(k)) } }.max() ?? 0
+        let w = min(Int((widest + 6) * 12700) + lowerInsets.l + lowerInsets.r, lineW + 200000)       // +6pt は実際のフォント幅との誤差ぶん
+        return (lineX + lineW / 2 - w / 2, w)
+    }
     /// カメラ名・レンズ名のボックス(コンパクト用。赤線の中央に揃う)
     var camX: Int { colX + 105331 }
     var camW: Int { 933061 }
     /// 撮影情報ボックスの左右余白(狭い列では詰めて「Shutter Speed: 1/800 sec」を1行に収める)
-    var lowerInsets: (l: Int, r: Int) { narrow ? (36000, 0) : (91440, 91440) }
+    var lowerInsets: (l: Int, r: Int) { narrow ? (0, 0) : (91440, 91440) }
 
     static func single(_ layout: SlideLayout) -> Panel {
         layout == .forum
@@ -225,14 +229,17 @@ enum PPTXBuilder {
             let lineY = 4412530
             shapes += lineShape(id: id, y: lineY, x: panel.lineX, w: panel.lineW); id += 1
             var edge = lineY - 25000                     // 本文の下端(線の少し上)
-            for (k, t) in upper.reversed() {
-                let y = edge + inset - height(k, t)
-                emit(k, t, y: y); edge = y + inset
+            if !upper.isEmpty {                          // 線の上(カメラ名・レンズ名)は1つのテキストボックスにまとめ、中央寄せ
+                let total = upper.reduce(2 * inset) { $0 + step($1.0, $1.1) }
+                let y = edge + inset - total
+                shapes += stackedShape(id: id, y: y, h: total, items: upper, x: panel.colX, w: panel.colW, fonts: fonts, color: style.textHex); id += 1
+                edge = y + inset
             }
             let down = lineY + 30000 - inset + Int(lineGap * 12700)     // 赤線と文字の間隔(調整分)
             if !lower.isEmpty {                          // 線の下は1つのテキストボックスにまとめ、左寄せ
-                let h = lowerHeight(lower, spacing: lineSpacing, width: panel.lowerW, pad: Double(panel.lowerInsets.l + panel.lowerInsets.r) / 12700)
-                shapes += lowerShape(id: id, y: down, h: h, items: lower, x: panel.lowerX, w: panel.lowerW, insets: panel.lowerInsets, fonts: fonts, spacing: lineSpacing, color: style.textHex); id += 1
+                let box = panel.lowerBox(lower, layout: layout)
+                let h = lowerHeight(lower, spacing: lineSpacing, width: box.w, pad: Double(panel.lowerInsets.l + panel.lowerInsets.r) / 12700)
+                shapes += lowerShape(id: id, y: down, h: h, items: lower, x: box.x, w: box.w, insets: panel.lowerInsets, fonts: fonts, spacing: lineSpacing, color: style.textHex); id += 1
             }
         }
         return shapes
@@ -269,23 +276,17 @@ enum PPTXBuilder {
         if !lensLines.isEmpty || camera != nil || !list.isEmpty {
             shapes += lineShape(id: id, y: lineY, x: panel.lineX, w: panel.lineW); id += 1
         }
-        let lensBottom = lineY + 10000                         // 線の上へ積み上げる(レンズ → カメラ)
-        var cameraBottom = lensBottom
-        if !lensLines.isEmpty {
+        let lensBottom = lineY + 10000                         // 線の上へ積み上げる(カメラ名 → レンズ名を1つのテキストボックスに)
+        if !lensLines.isEmpty || camera != nil {
             let lensBody = Double(lensLines.reduce(0) { $0 + estimateLines($1, size: layout.fontSize(.lens), width: panel.camW) }) * layout.fontSize(.lens) * 1.2 * 12700
-            let y = lensBottom - Int(lensBody) - 91440
-            shapes += lensShape(id: id, y: y, h: Int(lensBody) + 91440, lines: lensLines, x: panel.camX, w: panel.camW, fonts: fonts, color: style.textHex); id += 1
-            cameraBottom = y + 105000
-        }
-        if let t = camera {
-            let n = estimateLines(t, size: layout.fontSize(.camera), width: panel.camW)
-            let body = Double(n) * layout.fontSize(.camera) * 1.2 * 12700
-            let y = cameraBottom - Int(body) - 91440 - 14000
-            shapes += textShape(id: id, y: y, h: Int(body) + 91440, text: t, size: layout.fontSize(.camera), x: panel.camX, w: panel.camW, fonts: fonts, color: style.textHex); id += 1
+            let camBody = camera.map { Double(estimateLines($0, size: layout.fontSize(.camera), width: panel.camW)) * layout.fontSize(.camera) * 1.2 * 12700 } ?? 0
+            let y = lensBottom - Int(lensBody) - Int(camBody) - 91440 - (lensLines.isEmpty ? 14000 : 0)
+            shapes += cameraLensShape(id: id, y: y, h: Int(lensBody + camBody) + 91440, camera: camera, lines: lensLines, x: panel.camX, w: panel.camW, fonts: fonts, color: style.textHex); id += 1
         }
         if !list.isEmpty {
             let h = Int(list.reduce(0.0) { $0 + body($1.0, $1.1) * lineSpacing }) + 91440
-            shapes += lowerShape(id: id, y: 4525086 + Int(lineGap * 12700), h: h, items: list, x: panel.lowerX, w: panel.lowerW, insets: panel.lowerInsets,
+            let box = panel.lowerBox(list, layout: layout)
+            shapes += lowerShape(id: id, y: 4525086 + Int(lineGap * 12700), h: h, items: list, x: box.x, w: box.w, insets: panel.lowerInsets,
                                  fonts: fonts, spacing: lineSpacing, color: style.textHex, layout: layout); id += 1
         }
         return shapes
@@ -314,11 +315,11 @@ enum PPTXBuilder {
         return Int(body * 12700) + 91440
     }
 
-    /// 撮影情報(シャッタースピード/F値/ISO/備考)を1つのテキストボックスにまとめる。行間は spacing(1.0 = 100%)
+    /// 撮影情報(シャッタースピード/F値/ISO/備考)を1つのテキストボックスにまとめ、左揃え。行間は spacing(1.0 = 100%)
     static func lowerShape(id: Int, y: Int, h: Int, items: [(FieldKind, String)], x: Int, w: Int, insets: (l: Int, r: Int), fonts: SlideFonts, spacing: Double, color: String, layout: SlideLayout = .forum) -> String {
         let paras = items.map { k, t -> String in
             let sz = Int(layout.fontSize(k) * 100)
-            let ppr = "<a:pPr algn=\"l\"\(k == .note ? " marL=\"54000\"" : "")><a:lnSpc><a:spcPct val=\"\(Int((spacing * 100000).rounded()))\"/></a:lnSpc></a:pPr>"
+            let ppr = "<a:pPr algn=\"l\"><a:lnSpc><a:spcPct val=\"\(Int((spacing * 100000).rounded()))\"/></a:lnSpc></a:pPr>"
             return "<a:p>\(ppr)<a:r><a:rPr \(langAttrs(t)) sz=\"\(sz)\" dirty=\"0\"><a:solidFill><a:srgbClr val=\"\(color)\"/></a:solidFill><a:latin typeface=\"\(esc(fonts.latin))\"/><a:ea typeface=\"\(esc(fonts.ea))\"/></a:rPr><a:t>\(esc(t))</a:t></a:r></a:p>"
         }.joined()
         return """
@@ -365,15 +366,28 @@ enum PPTXBuilder {
         """
     }
 
-    /// レンズ名のボックス。1行なら中央、2行以上なら 1行目を左寄せ・最後の行を右寄せ(間は左寄せ)
-    static func lensShape(id: Int, y: Int, h: Int, lines: [String], x: Int, w: Int, fonts: SlideFonts, color: String) -> String {
-        let sz = Int(SlideLayout.compact.fontSize(.lens) * 100)
-        let paras = lines.enumerated().map { i, t -> String in
-            let algn = lines.count == 1 ? "ctr" : (i == lines.count - 1 ? "r" : "l")
-            return "<a:p><a:pPr algn=\"\(algn)\"/><a:r><a:rPr \(langAttrs(t)) sz=\"\(sz)\" dirty=\"0\"><a:solidFill><a:srgbClr val=\"\(color)\"/></a:solidFill><a:latin typeface=\"\(esc(fonts.latin))\"/><a:ea typeface=\"\(esc(fonts.ea))\"/></a:rPr><a:t>\(esc(t))</a:t></a:r></a:p>"
+    /// カメラ名+レンズ名のボックス。行送りは文字サイズの1.2倍に固定(別ボックスだった頃と同じ位置になる)。カメラ名は中央。レンズ名は1行なら中央、2行以上なら 1行目を左寄せ・最後の行を右寄せ(間は左寄せ)
+    static func cameraLensShape(id: Int, y: Int, h: Int, camera: String?, lines: [String], x: Int, w: Int, fonts: SlideFonts, color: String) -> String {
+        func para(_ t: String, algn: String, size: Double) -> String {
+            "<a:p><a:pPr algn=\"\(algn)\"><a:lnSpc><a:spcPts val=\"\(Int((size * 120).rounded()))\"/></a:lnSpc></a:pPr><a:r><a:rPr \(langAttrs(t)) sz=\"\(Int(size * 100))\" dirty=\"0\"><a:solidFill><a:srgbClr val=\"\(color)\"/></a:solidFill><a:latin typeface=\"\(esc(fonts.latin))\"/><a:ea typeface=\"\(esc(fonts.ea))\"/></a:rPr><a:t>\(esc(t))</a:t></a:r></a:p>"
+        }
+        var paras = camera.map { para($0, algn: "ctr", size: SlideLayout.compact.fontSize(.camera)) } ?? ""
+        paras += lines.enumerated().map { i, t in
+            para(t, algn: lines.count == 1 ? "ctr" : (i == lines.count - 1 ? "r" : "l"), size: SlideLayout.compact.fontSize(.lens))
         }.joined()
         return """
-        <p:sp><p:nvSpPr><p:cNvPr id="\(id)" name="レンズ名"/><p:cNvSpPr txBox="1"/><p:nvPr/></p:nvSpPr><p:spPr><a:xfrm><a:off x="\(x)" y="\(y)"/><a:ext cx="\(w)" cy="\(h)"/></a:xfrm><a:prstGeom prst="rect"><a:avLst/></a:prstGeom><a:noFill/></p:spPr><p:txBody><a:bodyPr wrap="square" rtlCol="0"><a:spAutoFit/></a:bodyPr><a:lstStyle/>\(paras)</p:txBody></p:sp>
+        <p:sp><p:nvSpPr><p:cNvPr id="\(id)" name="カメラ・レンズ名"/><p:cNvSpPr txBox="1"/><p:nvPr/></p:nvSpPr><p:spPr><a:xfrm><a:off x="\(x)" y="\(y)"/><a:ext cx="\(w)" cy="\(h)"/></a:xfrm><a:prstGeom prst="rect"><a:avLst/></a:prstGeom><a:noFill/></p:spPr><p:txBody><a:bodyPr wrap="square" rtlCol="0"><a:spAutoFit/></a:bodyPr><a:lstStyle/>\(paras)</p:txBody></p:sp>
+        """
+    }
+
+    /// 複数の項目を中央寄せの段落として1つのボックスに積む。行送りは文字サイズの1.2倍に固定(別ボックスだった頃と同じ位置になる)
+    static func stackedShape(id: Int, y: Int, h: Int, items: [(FieldKind, String)], x: Int, w: Int, fonts: SlideFonts, color: String) -> String {
+        let paras = items.map { k, t -> String in
+            let size = k.fontSize
+            return "<a:p><a:pPr algn=\"ctr\"><a:lnSpc><a:spcPts val=\"\(Int((size * 120).rounded()))\"/></a:lnSpc></a:pPr><a:r><a:rPr \(langAttrs(t)) sz=\"\(Int(size * 100))\" dirty=\"0\"><a:solidFill><a:srgbClr val=\"\(color)\"/></a:solidFill><a:latin typeface=\"\(esc(fonts.latin))\"/><a:ea typeface=\"\(esc(fonts.ea))\"/></a:rPr><a:t>\(esc(t))</a:t></a:r></a:p>"
+        }.joined()
+        return """
+        <p:sp><p:nvSpPr><p:cNvPr id="\(id)" name="カメラ・レンズ名"/><p:cNvSpPr txBox="1"/><p:nvPr/></p:nvSpPr><p:spPr><a:xfrm><a:off x="\(x)" y="\(y)"/><a:ext cx="\(w)" cy="\(h)"/></a:xfrm><a:prstGeom prst="rect"><a:avLst/></a:prstGeom><a:noFill/></p:spPr><p:txBody><a:bodyPr wrap="square" rtlCol="0"><a:spAutoFit/></a:bodyPr><a:lstStyle/>\(paras)</p:txBody></p:sp>
         """
     }
 

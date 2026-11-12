@@ -11,6 +11,10 @@ struct ReleaseNote: Identifiable {
 /// 更新内容。新しい版を出すときは、先頭に1件足す(スクリーンショットは Resources/whatsnew/ に置く)
 enum ReleaseNotes {
     static let all: [ReleaseNote] = [
+        ReleaseNote(version: "2.1", items: [
+            "カメラ名とレンズ名を、1つのテキストボックスにまとめました(見た目は今までどおり)",
+            "赤線の下の撮影情報ボックスを赤線の中心に揃え、「Shutter Speed: 1/1,250 sec」のようにシャッタースピードが4桁でも「sec」が次の行に落ちないように",
+        ]),
         ReleaseNote(version: "2.0", items: [
             "写真2枚を1スライドに並べる「2段組み」に対応。写真のサムネイルをドラッグして、左右に並べたり順番を入れ替えたりできます",
             "スライドの背景色を設定(⌘,)で変更可能。黒・ライトグレー、カラーパネルでRGB/CMYKなど自由に指定でき、文字色は自動で白/黒に",

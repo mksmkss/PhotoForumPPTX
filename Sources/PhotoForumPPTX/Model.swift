@@ -142,6 +142,8 @@ final class AppModel: ObservableObject {
     var style: SlideStyle { SlideStyle(bgHex: bgHex) }
     /// 書き出し後にpptxを開く(オフならFinderで表示)
     @Published var openAfterExport: Bool { didSet { UserDefaults.standard.set(openAfterExport, forKey: "openAfterExport") } }
+    /// スライドの大きさの倍率(1 = 25.4×14.29cm, 2 = 50.8×28.58cm, 4 = 101.6×57.15cm)。中身も同じ倍率で拡大する
+    @Published var slideScale: Int { didSet { UserDefaults.standard.set(slideScale, forKey: "slideScale") } }
     /// 情報欄のデザイン
     @Published var layout: SlideLayout { didSet { UserDefaults.standard.set(layout.rawValue, forKey: "layout") } }
     /// 手入力したレンズ名(マニュアルレンズなど)。一度入れたら候補に出す
@@ -173,6 +175,7 @@ final class AppModel: ObservableObject {
         bgHex = d.string(forKey: "bgHex") ?? SlideStyle.black.bgHex
         openAfterExport = d.object(forKey: "openAfterExport") as? Bool ?? true
         layout = SlideLayout(rawValue: d.string(forKey: "layout") ?? "") ?? .forum
+        slideScale = [1, 2, 4].contains(d.integer(forKey: "slideScale")) ? d.integer(forKey: "slideScale") : 1
         lineGap = d.object(forKey: "lineGap") as? Double ?? 0
         let defaultFields: [FieldSetting] = [
             .init(kind: .camera, enabled: true), .init(kind: .lens, enabled: true),
@@ -292,7 +295,7 @@ final class AppModel: ObservableObject {
             let template = Bundle.main.url(forResource: "template", withExtension: "pptx")
                 ?? URL(fileURLWithPath: FileManager.default.currentDirectoryPath + "/Resources/template.pptx")
             try PPTXBuilder.build(template: template, output: out, photos: photos, fields: fields,
-                                  studentID: studentID, name: name, fonts: fonts, lineSpacing: lineSpacing, style: style, layout: layout, lineGap: lineGap)
+                                  studentID: studentID, name: name, fonts: fonts, lineSpacing: lineSpacing, style: style, layout: layout, lineGap: lineGap, scale: slideScale)
             photos.forEach { rememberLens($0.lens, focal: $0.focal) }
             status = "書き出しました: \(out.lastPathComponent)"
             if openAfterExport { NSWorkspace.shared.open(out) } else { NSWorkspace.shared.activateFileViewerSelecting([out]) }

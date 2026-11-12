@@ -96,7 +96,7 @@ enum PPTXBuilder {
     static let startY = 180783
 
     static func build(template: URL, output: URL, photos: [Photo], fields: [FieldSetting],
-                      studentID: String, name: String, fonts: SlideFonts = .default, lineSpacing: Double = 1.0, style: SlideStyle = .black, layout: SlideLayout = .forum, lineGap: Double = 0) throws {
+                      studentID: String, name: String, fonts: SlideFonts = .default, lineSpacing: Double = 1.0, style: SlideStyle = .black, layout: SlideLayout = .forum, lineGap: Double = 0, scale: Int = 1) throws {
         let fm = FileManager.default
         let work = fm.temporaryDirectory.appendingPathComponent("pfp-\(UUID().uuidString)")
         defer { try? fm.removeItem(at: work) }
@@ -123,7 +123,7 @@ enum PPTXBuilder {
                 try writeJPEG(photo, to: pkg.appendingPathComponent("ppt/media/\(imgName)"))
                 rels += "<Relationship Id=\"rId\(k + 2)\" Type=\"http://schemas.openxmlformats.org/officeDocument/2006/relationships/image\" Target=\"../media/\(imgName)\"/>"
             }
-            let xml = slideXML(photos: group, fields: fields, studentID: studentID, name: name, fonts: fonts, lineSpacing: lineSpacing, style: style, layout: layout, lineGap: lineGap)
+            let xml = slideXML(photos: group, fields: fields, studentID: studentID, name: name, fonts: fonts, lineSpacing: lineSpacing, style: style, layout: layout, lineGap: lineGap, scale: scale)
             try xml.write(to: pkg.appendingPathComponent("ppt/slides/slide\(n).xml"), atomically: true, encoding: .utf8)
             let relsXML = """
             <?xml version="1.0" encoding="UTF-8" standalone="yes"?>
@@ -146,6 +146,9 @@ enum PPTXBuilder {
         }
         try edit(pkg.appendingPathComponent("ppt/presentation.xml")) { s in
             s = s.replacingOccurrences(of: #"<p:sldIdLst>.*?</p:sldIdLst>"#, with: "<p:sldIdLst>\(sldIds)</p:sldIdLst>", options: .regularExpression)
+            if scale > 1 {   // スライドの大きさ(カスタムサイズ)
+                s = s.replacingOccurrences(of: #"<p:sldSz[^>]*/>"#, with: "<p:sldSz cx=\"\(9144000 * scale)\" cy=\"\(5143500 * scale)\"/>", options: .regularExpression)
+            }
         }
 
         try? fm.removeItem(at: output)
@@ -165,7 +168,7 @@ enum PPTXBuilder {
     }
 
     static func slideXML(photos: [Photo], fields: [FieldSetting], studentID: String, name: String, fonts: SlideFonts,
-                         lineSpacing: Double = 1.0, style: SlideStyle = .black, layout: SlideLayout = .forum, lineGap: Double = 0) -> String {
+                         lineSpacing: Double = 1.0, style: SlideStyle = .black, layout: SlideLayout = .forum, lineGap: Double = 0, scale: Int = 1) -> String {
         let panels: [Panel] = photos.count == 2 ? [.left, .right] : [.single(layout)]
         var shapes = "", id = 10
         for (i, photo) in photos.enumerated() {
@@ -174,10 +177,41 @@ enum PPTXBuilder {
             shapes += panelShapes(photo: photo, panel: panel, identity: i == photos.count - 1, fields: fields,
                                   studentID: studentID, name: name, fonts: fonts, lineSpacing: lineSpacing, style: style, layout: layout, lineGap: lineGap, id: &id)
         }
+        shapes = scaled(shapes, by: scale)
         return """
         <?xml version="1.0" encoding="UTF-8" standalone="yes"?>
         <p:sld xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships" xmlns:p="http://schemas.openxmlformats.org/presentationml/2006/main"><p:cSld><p:bg><p:bgPr><a:solidFill><a:srgbClr val="\(style.bgHex)"/></a:solidFill><a:effectLst/></p:bgPr></p:bg><p:spTree><p:nvGrpSpPr><p:cNvPr id="1" name=""/><p:cNvGrpSpPr/><p:nvPr/></p:nvGrpSpPr><p:grpSpPr><a:xfrm><a:off x="0" y="0"/><a:ext cx="0" cy="0"/><a:chOff x="0" y="0"/><a:chExt cx="0" cy="0"/></a:xfrm></p:grpSpPr>\(shapes)</p:spTree></p:cSld><p:clrMapOvr><a:masterClrMapping/></p:clrMapOvr></p:sld>
         """
+    }
+
+    /// 標準サイズ(25.4×14.29cm)で組んだ図形XMLを k 倍に拡大する。位置・大きさ・文字サイズ・余白・線の太さを掛け、
+    /// 余白の既定値(省略されている分)も明示して倍率を掛ける
+    static func scaled(_ xml: String, by k: Int) -> String {
+        guard k > 1 else { return xml }
+        func mul(_ pattern: String, _ s: String, prefix: Bool = false) -> String {
+            let re = try! NSRegularExpression(pattern: pattern)
+            var out = "", last = s.startIndex
+            for m in re.matches(in: s, range: NSRange(s.startIndex..., in: s)) {
+                let whole = Range(m.range, in: s)!, num = Range(m.range(at: 2), in: s)!
+                out += s[last..<whole.lowerBound] + s[whole.lowerBound..<num.lowerBound] + String((Int(s[num]) ?? 0) * k) + s[num.upperBound..<whole.upperBound]
+                last = whole.upperBound
+            }
+            return out + s[last...]
+        }
+        var s = mul(#"(\b(?:x|y|cx|cy|lIns|tIns|rIns|bIns|marL|sz)=")(\d+)(")"#, xml)
+        s = mul(#"(<a:spcPts val=")(\d+)(")"#, s)
+        // bodyPr の既定の余白(左右0.1インチ・上下0.05インチ)を、省略されていれば倍率つきで書き足す
+        let re = try! NSRegularExpression(pattern: #"<a:bodyPr([^>]*)>"#)
+        var out = "", last = s.startIndex
+        for m in re.matches(in: s, range: NSRange(s.startIndex..., in: s)) {
+            let whole = Range(m.range, in: s)!, attrs = String(s[Range(m.range(at: 1), in: s)!])
+            var add = ""
+            for (name, v) in [("lIns", 91440), ("tIns", 45720), ("rIns", 91440), ("bIns", 45720)] where !attrs.contains("\(name)=") { add += " \(name)=\"\(v * k)\"" }
+            out += s[last..<whole.lowerBound] + "<a:bodyPr" + attrs + add + ">"
+            last = whole.upperBound
+        }
+        s = out + s[last...]
+        return s.replacingOccurrences(of: "<a:ln><a:solidFill>", with: "<a:ln w=\"\(9525 * k)\"><a:solidFill>")
     }
 
     /// 写真: 領域の左寄せ・高さいっぱい。横長すぎて領域の幅を超える場合のみ幅に合わせて縮小

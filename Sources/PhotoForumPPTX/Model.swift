@@ -152,6 +152,14 @@ final class AppModel: ObservableObject {
     @Published var lensFocal: [String: String] = UserDefaults.standard.dictionary(forKey: "lensFocal") as? [String: String] ?? [:]
     /// 赤線と撮影情報(SS・F値など)の間隔の調整(pt。0が標準、+で広がる)
     @Published var lineGap: Double { didSet { UserDefaults.standard.set(lineGap, forKey: "lineGap") } }
+    /// カメラ・レンズ / 赤線 / 撮影情報ボックスの幅の調整(pt。0が標準、+で広がる)
+    @Published var camWidth: Double { didSet { UserDefaults.standard.set(camWidth, forKey: "camWidth") } }
+    @Published var lineWidth: Double { didSet { UserDefaults.standard.set(lineWidth, forKey: "lineWidth") } }
+    @Published var lowerWidth: Double { didSet { UserDefaults.standard.set(lowerWidth, forKey: "lowerWidth") } }
+    /// 赤線とカメラ・レンズの間隔(pt)と、上下を連動させるか(連動なら「赤線との間隔」の値を上にも使う)
+    @Published var upperGap: Double { didSet { UserDefaults.standard.set(upperGap, forKey: "upperGap") } }
+    @Published var gapLinked: Bool { didSet { UserDefaults.standard.set(gapLinked, forKey: "gapLinked") } }
+    var widths: BoxWidths { BoxWidths(camera: camWidth, line: lineWidth, lower: lowerWidth, upperGap: gapLinked ? lineGap : upperGap) }
     @Published var updating = false
     @Published var pendingNotes: [ReleaseNote] = []
 
@@ -177,6 +185,11 @@ final class AppModel: ObservableObject {
         layout = SlideLayout(rawValue: d.string(forKey: "layout") ?? "") ?? .forum
         slideScale = [1, 2, 4].contains(d.integer(forKey: "slideScale")) ? d.integer(forKey: "slideScale") : 1
         lineGap = d.object(forKey: "lineGap") as? Double ?? 0
+        upperGap = d.object(forKey: "upperGap") as? Double ?? 0
+        gapLinked = d.object(forKey: "gapLinked") as? Bool ?? true
+        camWidth = d.object(forKey: "camWidth") as? Double ?? 0
+        lineWidth = d.object(forKey: "lineWidth") as? Double ?? 0
+        lowerWidth = d.object(forKey: "lowerWidth") as? Double ?? 0
         let defaultFields: [FieldSetting] = [
             .init(kind: .camera, enabled: true), .init(kind: .lens, enabled: true),
             .init(kind: .focal, enabled: true), .init(kind: .shutter, enabled: true),
@@ -295,7 +308,7 @@ final class AppModel: ObservableObject {
             let template = Bundle.main.url(forResource: "template", withExtension: "pptx")
                 ?? URL(fileURLWithPath: FileManager.default.currentDirectoryPath + "/Resources/template.pptx")
             try PPTXBuilder.build(template: template, output: out, photos: photos, fields: fields,
-                                  studentID: studentID, name: name, fonts: fonts, lineSpacing: lineSpacing, style: style, layout: layout, lineGap: lineGap, scale: slideScale)
+                                  studentID: studentID, name: name, fonts: fonts, lineSpacing: lineSpacing, style: style, layout: layout, lineGap: lineGap, scale: slideScale, widths: widths)
             photos.forEach { rememberLens($0.lens, focal: $0.focal) }
             status = "書き出しました: \(out.lastPathComponent)"
             if openAfterExport { NSWorkspace.shared.open(out) } else { NSWorkspace.shared.activateFileViewerSelecting([out]) }

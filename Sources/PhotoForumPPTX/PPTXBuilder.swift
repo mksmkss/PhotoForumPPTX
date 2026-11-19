@@ -58,23 +58,40 @@ struct SlideStyle: Equatable {
     }
 }
 
+/// 設定で調整する幅(pt。0が標準、+で広がる)
+struct BoxWidths: Equatable {
+    var camera = 0.0     // カメラ名・レンズ名のテキストボックス
+    var line = 0.0       // 赤線
+    var lower = 0.0      // 撮影情報(SS・F値など)のテキストボックス
+    var upperGap = 0.0   // 赤線とカメラ・レンズの間隔(+で上へ離れる)
+}
+
 /// スライド上の写真1枚分の領域(写真ボックスと、その右隣の情報列)
 struct Panel {
     var photoX: Int, photoMaxW: Int
     var colX: Int, colW: Int
     var narrow: Bool
+    /// 設定での幅の調整(EMU。0が標準、+で広がる)。それぞれ中心を保ったまま増減する
+    var lineAdj = 0, camAdj = 0, lowerAdj = 0, upperGap = 0
     // 狭い列はテンプレートの寸法に合わせる: 文字は列の左端+7.2pt(既定の余白)から、赤線は列の左端+83219、幅933061
-    var lineX: Int { narrow ? colX + 83219 : 7817723 }
-    var lineW: Int { narrow ? 933061 : 1215730 }
+    var lineX: Int { (narrow ? colX + 83219 : 7817723) - lineAdj / 2 }
+    var lineW: Int { (narrow ? 933061 : 1215730) + lineAdj }
     /// 撮影情報ボックスの位置と幅。文字は左揃えのまま、最も長い行の幅に合わせたボックスを赤線の中心に置く(=文字のかたまりが赤線の中央に来る)
     func lowerBox(_ items: [(FieldKind, String)], layout: SlideLayout) -> (x: Int, w: Int) {
         let widest = items.map { k, t in t.unicodeScalars.reduce(0.0) { $0 + ($1.value < 0x2000 ? layout.fontSize(k) * 0.52 : layout.fontSize(k)) } }.max() ?? 0
-        let w = min(Int((widest + 6) * 12700) + lowerInsets.l + lowerInsets.r, lineW + 200000)       // +6pt は実際のフォント幅との誤差ぶん
+        let w = min(Int((widest + 6) * 12700) + lowerInsets.l + lowerInsets.r, lineW - lineAdj + 200000 + lowerAdj)       // +6pt は実際のフォント幅との誤差ぶん
         return (lineX + lineW / 2 - w / 2, w)
     }
     /// カメラ名・レンズ名のボックス(コンパクト用。赤線の中央に揃う)
-    var camX: Int { colX + 105331 }
-    var camW: Int { 933061 }
+    var camX: Int { colX + 105331 - camAdj / 2 }
+    var camW: Int { 933061 + camAdj }
+    /// カメラ・レンズのボックスの幅(pt)。フォーラム標準は情報列の幅、コンパクトは camW
+    func cameraBoxPt(_ layout: SlideLayout) -> Double { Double(layout == .compact ? camW : colW + camAdj) / 12700 }
+    func adjusted(_ w: BoxWidths) -> Panel {
+        var p = self
+        p.lineAdj = Int(w.line * 12700); p.camAdj = Int(w.camera * 12700); p.lowerAdj = Int(w.lower * 12700); p.upperGap = Int(w.upperGap * 12700)
+        return p
+    }
     /// 撮影情報ボックスの左右余白(狭い列では詰めて「Shutter Speed: 1/800 sec」を1行に収める)
     var lowerInsets: (l: Int, r: Int) { narrow ? (0, 0) : (91440, 91440) }
 
@@ -96,7 +113,7 @@ enum PPTXBuilder {
     static let startY = 180783
 
     static func build(template: URL, output: URL, photos: [Photo], fields: [FieldSetting],
-                      studentID: String, name: String, fonts: SlideFonts = .default, lineSpacing: Double = 1.0, style: SlideStyle = .black, layout: SlideLayout = .forum, lineGap: Double = 0, scale: Int = 1) throws {
+                      studentID: String, name: String, fonts: SlideFonts = .default, lineSpacing: Double = 1.0, style: SlideStyle = .black, layout: SlideLayout = .forum, lineGap: Double = 0, scale: Int = 1, widths: BoxWidths = BoxWidths()) throws {
         let fm = FileManager.default
         let work = fm.temporaryDirectory.appendingPathComponent("pfp-\(UUID().uuidString)")
         defer { try? fm.removeItem(at: work) }
@@ -123,7 +140,7 @@ enum PPTXBuilder {
                 try writeJPEG(photo, to: pkg.appendingPathComponent("ppt/media/\(imgName)"))
                 rels += "<Relationship Id=\"rId\(k + 2)\" Type=\"http://schemas.openxmlformats.org/officeDocument/2006/relationships/image\" Target=\"../media/\(imgName)\"/>"
             }
-            let xml = slideXML(photos: group, fields: fields, studentID: studentID, name: name, fonts: fonts, lineSpacing: lineSpacing, style: style, layout: layout, lineGap: lineGap, scale: scale)
+            let xml = slideXML(photos: group, fields: fields, studentID: studentID, name: name, fonts: fonts, lineSpacing: lineSpacing, style: style, layout: layout, lineGap: lineGap, scale: scale, widths: widths)
             try xml.write(to: pkg.appendingPathComponent("ppt/slides/slide\(n).xml"), atomically: true, encoding: .utf8)
             let relsXML = """
             <?xml version="1.0" encoding="UTF-8" standalone="yes"?>
@@ -168,8 +185,9 @@ enum PPTXBuilder {
     }
 
     static func slideXML(photos: [Photo], fields: [FieldSetting], studentID: String, name: String, fonts: SlideFonts,
-                         lineSpacing: Double = 1.0, style: SlideStyle = .black, layout: SlideLayout = .forum, lineGap: Double = 0, scale: Int = 1) -> String {
-        let panels: [Panel] = photos.count == 2 ? [.left, .right] : [.single(layout)]
+                         lineSpacing: Double = 1.0, style: SlideStyle = .black, layout: SlideLayout = .forum, lineGap: Double = 0, scale: Int = 1, widths: BoxWidths = BoxWidths()) -> String {
+        let base: [Panel] = photos.count == 2 ? [.left, .right] : [.single(layout)]
+        let panels = base.map { $0.adjusted(widths) }
         var shapes = "", id = 10
         for (i, photo) in photos.enumerated() {
             let panel = panels[i]
@@ -262,11 +280,11 @@ enum PPTXBuilder {
         if !upper.isEmpty || !lower.isEmpty {
             let lineY = 4412530
             shapes += lineShape(id: id, y: lineY, x: panel.lineX, w: panel.lineW); id += 1
-            var edge = lineY - 25000                     // 本文の下端(線の少し上)
+            var edge = lineY - 25000 - panel.upperGap                     // 本文の下端(線の少し上)
             if !upper.isEmpty {                          // 線の上(カメラ名・レンズ名)は1つのテキストボックスにまとめ、中央寄せ
                 let total = upper.reduce(2 * inset) { $0 + step($1.0, $1.1) }
                 let y = edge + inset - total
-                shapes += stackedShape(id: id, y: y, h: total, items: upper, x: panel.colX, w: panel.colW, fonts: fonts, color: style.textHex); id += 1
+                shapes += stackedShape(id: id, y: y, h: total, items: upper, x: panel.colX - panel.camAdj / 2, w: panel.colW + panel.camAdj, fonts: fonts, color: style.textHex); id += 1
                 edge = y + inset
             }
             let down = lineY + 30000 - inset + Int(lineGap * 12700)     // 赤線と文字の間隔(調整分)
@@ -310,7 +328,7 @@ enum PPTXBuilder {
         if !lensLines.isEmpty || camera != nil || !list.isEmpty {
             shapes += lineShape(id: id, y: lineY, x: panel.lineX, w: panel.lineW); id += 1
         }
-        let lensBottom = lineY + 10000                         // 線の上へ積み上げる(カメラ名 → レンズ名を1つのテキストボックスに)
+        let lensBottom = lineY + 10000 - panel.upperGap                         // 線の上へ積み上げる(カメラ名 → レンズ名を1つのテキストボックスに)
         if !lensLines.isEmpty || camera != nil {
             let lensBody = Double(lensLines.reduce(0) { $0 + estimateLines($1, size: layout.fontSize(.lens), width: panel.camW) }) * layout.fontSize(.lens) * 1.2 * 12700
             let camBody = camera.map { Double(estimateLines($0, size: layout.fontSize(.camera), width: panel.camW)) * layout.fontSize(.camera) * 1.2 * 12700 } ?? 0

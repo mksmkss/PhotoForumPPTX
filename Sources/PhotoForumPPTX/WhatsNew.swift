@@ -11,6 +11,9 @@ struct ReleaseNote: Identifiable {
 /// 更新内容。新しい版を出すときは、先頭に1件足す(スクリーンショットは Resources/whatsnew/ に置く)
 enum ReleaseNotes {
     static let all: [ReleaseNote] = [
+        ReleaseNote(version: "2.3", items: [
+            "設定(⌘,)の「行間」タブに、赤線の長さ・カメラ名とレンズ名のボックス幅・撮影情報のボックス幅の調整を追加(中心を保ったまま広げ縮めできます)",
+        ]),
         ReleaseNote(version: "2.2", items: [
             "設定(⌘,)の「一般」に「スライドのサイズ」を追加。25.4×14.29cm(標準)のほか、50.8×28.58cm、101.6×57.15cm を選べます。写真・文字・線は同じ比率で拡大されます",
         ]),

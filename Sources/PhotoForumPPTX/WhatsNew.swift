@@ -11,6 +11,9 @@ struct ReleaseNote: Identifiable {
 /// 更新内容。新しい版を出すときは、先頭に1件足す(スクリーンショットは Resources/whatsnew/ に置く)
 enum ReleaseNotes {
     static let all: [ReleaseNote] = [
+        ReleaseNote(version: "2.5", items: [
+            "macOS 15 (Sequoia) で、「行間」タブのスライダーをダブルクリックしても初期値に戻らなかったのを修正",
+        ]),
         ReleaseNote(version: "2.4", items: [
             "「行間」タブのスライダーをダブルクリックすると、そのスライダーが初期値に戻るように",
             "赤線の上(カメラ・レンズ)の空きが、下(撮影情報)より狭く見えていたのを修正",

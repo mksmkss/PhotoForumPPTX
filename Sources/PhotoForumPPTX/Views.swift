@@ -523,7 +523,7 @@ struct SpacingSettings: View {
 
     /// ダブルクリックで初期値に戻るスライダー
     private func resettable(_ s: Slider<EmptyView, EmptyView>, _ value: Binding<Double>, _ initial: Double) -> some View {
-        s.simultaneousGesture(TapGesture(count: 2).onEnded { value.wrappedValue = initial })
+        s.modifier(DoubleClickReset(value: value, initial: initial))
     }
 
     private func gapRow(_ label: String, _ value: Binding<Double>) -> some View {
@@ -644,4 +644,46 @@ struct AboutSettings: View {
 struct WhatsNewWindow: View {
     @Environment(\.dismiss) private var dismiss
     var body: some View { WhatsNewView(notes: ReleaseNotes.all) { dismiss() } }
+}
+
+
+/// スライダーをダブルクリックしたら初期値に戻す。
+/// macOS 15 ではSliderがクリックを先に処理してTapGestureが効かないため、NSEventで検出する
+struct DoubleClickReset: ViewModifier {
+    @Binding var value: Double
+    let initial: Double
+    @State private var probe = ProbeView()
+
+    func body(content: Content) -> some View {
+        content
+            .background(ProbeRep(view: probe))
+            .onAppear {
+                probe.onDoubleClick = { DispatchQueue.main.async { value = initial } }
+                probe.install()
+            }
+            .onDisappear { probe.uninstall() }
+    }
+}
+
+final class ProbeView: NSView {
+    var onDoubleClick: (() -> Void)?
+    private var monitor: Any?
+    func install() {
+        guard monitor == nil else { return }
+        monitor = NSEvent.addLocalMonitorForEvents(matching: .leftMouseUp) { [weak self] e in
+            if let self, e.clickCount == 2, e.window === self.window, self.window != nil {
+                let p = self.convert(e.locationInWindow, from: nil)
+                if self.bounds.contains(p) { self.onDoubleClick?() }
+            }
+            return e
+        }
+    }
+    func uninstall() { if let m = monitor { NSEvent.removeMonitor(m); monitor = nil } }
+    override func hitTest(_ point: NSPoint) -> NSView? { nil }
+}
+
+struct ProbeRep: NSViewRepresentable {
+    let view: ProbeView
+    func makeNSView(context: Context) -> ProbeView { view }
+    func updateNSView(_ v: ProbeView, context: Context) {}
 }

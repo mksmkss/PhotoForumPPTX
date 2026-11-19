@@ -2,6 +2,8 @@
 
 ![Downloads](https://img.shields.io/github/downloads/mksmkss/PhotoForumPPTX/total)
 
+![Downloads by release](docs/downloads.svg)
+
 写真を選ぶと、EXIFからカメラ名・レンズ名・焦点距離・SS・F値・ISOを読み取り、
 「写真表現Ⅰ 写真投稿フォーラム」テンプレートの書式で pptx を作る Mac / Windows アプリ。複数枚選ぶと複数ページになります。
 

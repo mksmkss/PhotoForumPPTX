@@ -280,7 +280,7 @@ enum PPTXBuilder {
         if !upper.isEmpty || !lower.isEmpty {
             let lineY = 4412530
             shapes += lineShape(id: id, y: lineY, x: panel.lineX, w: panel.lineW); id += 1
-            var edge = lineY - 25000 - panel.upperGap                     // 本文の下端(線の少し上)
+            var edge = lineY - 37700 - panel.upperGap                     // 本文の下端(線の少し上)
             if !upper.isEmpty {                          // 線の上(カメラ名・レンズ名)は1つのテキストボックスにまとめ、中央寄せ
                 let total = upper.reduce(2 * inset) { $0 + step($1.0, $1.1) }
                 let y = edge + inset - total
@@ -328,7 +328,7 @@ enum PPTXBuilder {
         if !lensLines.isEmpty || camera != nil || !list.isEmpty {
             shapes += lineShape(id: id, y: lineY, x: panel.lineX, w: panel.lineW); id += 1
         }
-        let lensBottom = lineY + 10000 - panel.upperGap                         // 線の上へ積み上げる(カメラ名 → レンズ名を1つのテキストボックスに)
+        let lensBottom = lineY - 2700 - panel.upperGap                         // 線の上へ積み上げる(カメラ名 → レンズ名を1つのテキストボックスに)
         if !lensLines.isEmpty || camera != nil {
             let lensBody = Double(lensLines.reduce(0) { $0 + estimateLines($1, size: layout.fontSize(.lens), width: panel.camW) }) * layout.fontSize(.lens) * 1.2 * 12700
             let camBody = camera.map { Double(estimateLines($0, size: layout.fontSize(.camera), width: panel.camW)) * layout.fontSize(.camera) * 1.2 * 12700 } ?? 0

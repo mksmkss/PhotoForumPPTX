@@ -648,7 +648,8 @@ struct WhatsNewWindow: View {
 
 
 /// スライダーをダブルクリックしたら初期値に戻す。
-/// macOS 15 ではSliderがクリックを先に処理してTapGestureが効かないため、NSEventで検出する
+/// NSSliderはmouseDown後に内部のトラッキングループに入りmouseUpを消費する(ローカルモニタにも届かない)ため、
+/// ループに入る前のleftMouseDownで検出し、イベントを握りつぶす(ツマミがクリック位置へ飛ばない)
 struct DoubleClickReset: ViewModifier {
     @Binding var value: Double
     let initial: Double
@@ -658,7 +659,7 @@ struct DoubleClickReset: ViewModifier {
         content
             .background(ProbeRep(view: probe))
             .onAppear {
-                probe.onDoubleClick = { DispatchQueue.main.async { value = initial } }
+                probe.onDoubleClick = { value = initial }
                 probe.install()
             }
             .onDisappear { probe.uninstall() }
@@ -670,10 +671,10 @@ final class ProbeView: NSView {
     private var monitor: Any?
     func install() {
         guard monitor == nil else { return }
-        monitor = NSEvent.addLocalMonitorForEvents(matching: .leftMouseUp) { [weak self] e in
+        monitor = NSEvent.addLocalMonitorForEvents(matching: .leftMouseDown) { [weak self] e in
             if let self, e.clickCount == 2, e.window === self.window, self.window != nil {
                 let p = self.convert(e.locationInWindow, from: nil)
-                if self.bounds.contains(p) { self.onDoubleClick?() }
+                if self.bounds.contains(p) { self.onDoubleClick?(); return nil }
             }
             return e
         }

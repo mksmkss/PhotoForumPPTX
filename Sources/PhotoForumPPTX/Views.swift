@@ -521,10 +521,15 @@ struct SpacingSettings: View {
     private let demo = ["Shutter Speed: 1/1,000 sec", "Aperture: f/5.6", "ISO: 400", "Step Crop"]
     private let scale = 1.6          // スライド上の7.5ptを画面で見やすく拡大
 
+    /// ダブルクリックで初期値に戻るスライダー
+    private func resettable(_ s: Slider<EmptyView, EmptyView>, _ value: Binding<Double>, _ initial: Double) -> some View {
+        s.simultaneousGesture(TapGesture(count: 2).onEnded { value.wrappedValue = initial })
+    }
+
     private func gapRow(_ label: String, _ value: Binding<Double>) -> some View {
         HStack {
             Text(label).frame(width: 110, alignment: .leading)
-            Slider(value: value, in: -4...12, step: 0.5)
+            resettable(Slider(value: value, in: -4...12, step: 0.5), value, 0)
             Text(String(format: "%+.1fpt", value.wrappedValue)).monospacedDigit().frame(width: 48, alignment: .trailing)
         }
     }
@@ -532,7 +537,7 @@ struct SpacingSettings: View {
     private func widthRow(_ label: String, _ value: Binding<Double>) -> some View {
         HStack {
             Text(label).frame(width: 80, alignment: .leading)
-            Slider(value: value, in: -20...40, step: 1)
+            resettable(Slider(value: value, in: -20...40, step: 1), value, 0)
             Text(String(format: "%+.0fpt", value.wrappedValue)).monospacedDigit().frame(width: 48, alignment: .trailing)
         }
     }
@@ -541,7 +546,7 @@ struct SpacingSettings: View {
         Form {
             HStack {
                 Text("行間").frame(width: 80, alignment: .leading)
-                Slider(value: $model.lineSpacing, in: 0.8...2.0, step: 0.05)
+                resettable(Slider(value: $model.lineSpacing, in: 0.8...2.0, step: 0.05), $model.lineSpacing, 1.0)
                 Text("\(Int((model.lineSpacing * 100).rounded()))%").monospacedDigit().frame(width: 48, alignment: .trailing)
             }
             Toggle("赤線との間隔を上下で連動させる", isOn: $model.gapLinked)
@@ -560,7 +565,7 @@ struct SpacingSettings: View {
                 let layout = model.layout
                 let panel = Panel.single(layout).adjusted(model.widths)     // 実際のスライドと同じ寸法
                 // 調整0のときの、赤線と文字の間隔(pt)。pptxの配置と同じ値
-                let upperBase = layout == .compact ? 2.8 : 2.0, lowerBase = layout == .compact ? 5.0 : 2.4
+                let upperBase = layout == .compact ? 3.8 : 3.0, lowerBase = layout == .compact ? 5.0 : 2.4
                 let lowerItems: [(FieldKind, String)] = demo.map { (.shutter, $0) }
                 VStack(spacing: 0) {
                     Text("ILCE-7M4").font(.custom(model.fonts.latin, size: layout.fontSize(.camera) * scale))
